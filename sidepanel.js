@@ -1336,19 +1336,20 @@ function renderSettingsView() {
     terminalsDesc.style.marginBottom = '8px';
     terminalsDesc.textContent = 'Open a terminal in any project folder — great for CLI tools like Claude Code.';
     terminalsField.appendChild(terminalsDesc);
-    renderAppCheckboxes(terminalsField, APP_PRESETS.filter(p => p.type === 'terminal'));
 
-    // Terminal setup callout
+    // Terminal setup callout (before checkboxes)
     const setupNote = document.createElement('div');
     setupNote.className = 'settings-setup-callout';
     setupNote.innerHTML = `
       ${createLucideIcon('info', 14).outerHTML}
       <div>
         <strong>One-time setup required</strong>
-        <div class="settings-row-desc" style="margin-top:2px">Terminals need <strong>Hatch</strong>, a free helper app, to handle <code>terminal://</code> links. <a href="https://github.com/nicksavarese/hatch" target="_blank">Get Hatch</a></div>
+        <div class="settings-row-desc" style="margin-top:2px">Terminals need <strong>Hatch</strong>, a free helper app for macOS, to handle <code>terminal://</code> links. <a href="https://github.com/nerves76/hatch" target="_blank">Get Hatch</a></div>
       </div>
     `;
     terminalsField.appendChild(setupNote);
+
+    renderAppCheckboxes(terminalsField, APP_PRESETS.filter(p => p.type === 'terminal'));
 
     appSection.appendChild(terminalsField);
 
