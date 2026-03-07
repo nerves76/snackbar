@@ -246,12 +246,28 @@ let features = {
   calendar: true,
   focusTimer: true
 };
-// Config for opening links in editors/terminals via custom URL schemes
+// Built-in app presets for opening links in editors/terminals via custom URL schemes
+const APP_PRESETS = [
+  { id: 'vscode', name: 'VS Code', scheme: 'vscode://file/', usesBasePath: true, type: 'editor' },
+  { id: 'cursor', name: 'Cursor', scheme: 'cursor://file/', usesBasePath: true, type: 'editor' },
+  { id: 'terminal', name: 'Terminal', scheme: 'terminal://default/', usesBasePath: true, type: 'terminal' },
+  { id: 'iterm', name: 'iTerm', scheme: 'terminal://iterm/', usesBasePath: true, type: 'terminal' },
+  { id: 'warp', name: 'Warp', scheme: 'terminal://warp/', usesBasePath: true, type: 'terminal' },
+  { id: 'ghostty', name: 'Ghostty', scheme: 'terminal://ghostty/', usesBasePath: true, type: 'terminal' },
+  { id: 'alacritty', name: 'Alacritty', scheme: 'terminal://alacritty/', usesBasePath: true, type: 'terminal' },
+  { id: 'kitty', name: 'Kitty', scheme: 'terminal://kitty/', usesBasePath: true, type: 'terminal' },
+  { id: 'wezterm', name: 'WezTerm', scheme: 'terminal://wezterm/', usesBasePath: true, type: 'terminal' },
+];
 let appLinksConfig = {
   enabled: false,
   basePath: '',
-  apps: []
+  enabledApps: [] // array of preset IDs, e.g. ['vscode', 'terminal']
 };
+
+/** Returns the full preset objects for enabled apps. */
+function getEnabledApps() {
+  return APP_PRESETS.filter(p => appLinksConfig.enabledApps.includes(p.id));
+}
 // Currently viewed date on each date-navigable panel
 let activityDate = new Date().toISOString().slice(0, 10);
 let notepadDate = new Date().toISOString().slice(0, 10);
@@ -334,7 +350,20 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => noti
 async function loadFeatures() {
   const data = await chrome.storage.local.get(['featureToggles', 'appLinksConfig']);
   if (data.featureToggles) Object.assign(features, data.featureToggles);
-  if (data.appLinksConfig) Object.assign(appLinksConfig, data.appLinksConfig);
+  if (data.appLinksConfig) {
+    // Migrate old format: apps[] → enabledApps[]
+    if (data.appLinksConfig.apps && !data.appLinksConfig.enabledApps) {
+      data.appLinksConfig.enabledApps = data.appLinksConfig.apps
+        .map(a => {
+          const match = APP_PRESETS.find(p => p.scheme === a.scheme);
+          return match ? match.id : null;
+        })
+        .filter(Boolean);
+      delete data.appLinksConfig.apps;
+      await chrome.storage.local.set({ appLinksConfig: data.appLinksConfig });
+    }
+    Object.assign(appLinksConfig, data.appLinksConfig);
+  }
 }
 
 async function saveFeatures() {
@@ -1231,47 +1260,12 @@ function renderSettingsView() {
   appSection.appendChild(appRow);
 
   if (appLinksConfig.enabled) {
-    // Help bubble
-    const helpBubble = document.createElement('div');
-    helpBubble.className = 'settings-help-bubble';
-    helpBubble.innerHTML = `
-      <div class="settings-help-toggle">
-        <span>${createLucideIcon('help-circle', 14).outerHTML} How app links work</span>
-        <span class="settings-help-chevron">${createLucideIcon('chevron-right', 14).outerHTML}</span>
-      </div>
-      <div class="settings-help-content" style="display:none">
-        <p>Add apps you use, then when adding a link you can pick an app from a dropdown instead of typing a URL. Snackbar builds the URL for you using the app's scheme and your base path.</p>
-        <p><strong>How to find an app's URL scheme:</strong></p>
-        <ul>
-          <li>Search for "<em>[app name] URL scheme</em>"</li>
-          <li>Check the app's docs or developer page</li>
-          <li>On Mac, check the app's <code>Info.plist</code> for <code>CFBundleURLSchemes</code></li>
-        </ul>
-        <p><strong>Common schemes:</strong></p>
-        <ul>
-          <li><code>vscode://file/</code> — <a href="https://github.com/microsoft/vscode-docs/issues/5215" target="_blank">VS Code docs</a></li>
-          <li><code>cursor://file/</code> — <a href="https://forum.cursor.com/t/does-cursor-have-a-unique-open-scheme/3659" target="_blank">Cursor info</a></li>
-          <li><code>figma://file/</code> — <a href="https://forum.figma.com/suggest-a-feature-11/open-figma-links-inside-the-app-33971" target="_blank">Figma info</a></li>
-          <li><code>slack://</code> — <a href="https://docs.slack.dev/interactivity/deep-linking/" target="_blank">Slack docs</a></li>
-          <li><code>terminal://</code> — requires a URL handler on your system</li>
-        </ul>
-      </div>
-    `;
-    helpBubble.querySelector('.settings-help-toggle').addEventListener('click', () => {
-      const content = helpBubble.querySelector('.settings-help-content');
-      const chevron = helpBubble.querySelector('.settings-help-chevron');
-      const showing = content.style.display !== 'none';
-      content.style.display = showing ? 'none' : '';
-      chevron.style.transform = showing ? '' : 'rotate(90deg)';
-    });
-    appSection.appendChild(helpBubble);
-
     // Base path
     const baseField = document.createElement('div');
     baseField.className = 'settings-terminal-field';
     baseField.innerHTML = `
       <label class="settings-row-label">Base path</label>
-      <div class="settings-row-desc" style="margin-bottom:6px">For path-based apps (editors, terminals), folder paths will be relative to this.</div>
+      <div class="settings-row-desc" style="margin-bottom:6px">Your projects folder. Paths in app links will be relative to this.</div>
       <input type="text" class="settings-terminal-input" value="${escapeHtml(appLinksConfig.basePath)}" placeholder="/Users/you/projects/">
     `;
     baseField.querySelector('input').addEventListener('change', async (e) => {
@@ -1282,82 +1276,89 @@ function renderSettingsView() {
     });
     appSection.appendChild(baseField);
 
-    // Apps list
-    const appsField = document.createElement('div');
-    appsField.className = 'settings-terminal-field';
-    appsField.style.marginTop = '12px';
-    const appsLabel = document.createElement('label');
-    appsLabel.className = 'settings-row-label';
-    appsLabel.textContent = 'Your apps';
-    appsField.appendChild(appsLabel);
-    const appsDesc = document.createElement('div');
-    appsDesc.className = 'settings-row-desc';
-    appsDesc.style.marginBottom = '8px';
-    appsDesc.textContent = 'These appear in the app dropdown when adding a link.';
-    appsField.appendChild(appsDesc);
-
-    const appsList = document.createElement('div');
-    appsList.className = 'settings-apps-list';
-    appLinksConfig.apps.forEach((app, i) => {
-      const row = document.createElement('div');
-      row.className = 'settings-app-row';
-      const rowInfo = document.createElement('div');
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'settings-app-name';
-      nameSpan.textContent = app.name;
-      rowInfo.appendChild(nameSpan);
-      const schemeDesc = document.createElement('div');
-      schemeDesc.className = 'settings-row-desc';
-      schemeDesc.textContent = app.scheme + (app.usesBasePath ? '{base}/' : '') + '{path}';
-      rowInfo.appendChild(schemeDesc);
-      row.appendChild(rowInfo);
-      const delBtn = document.createElement('button');
-      delBtn.className = 'settings-app-delete';
-      delBtn.appendChild(createLucideIcon('x', 12));
-      delBtn.addEventListener('click', async () => {
-        appLinksConfig.apps.splice(i, 1);
-        await saveAppLinksConfig();
-        renderSettingsView();
+    // Helper to render a group of app preset checkboxes
+    function renderAppCheckboxes(container, presets) {
+      const list = document.createElement('div');
+      list.className = 'settings-apps-list';
+      presets.forEach(preset => {
+        const row = document.createElement('label');
+        row.className = 'settings-app-row';
+        row.style.cursor = 'pointer';
+        const isOn = appLinksConfig.enabledApps.includes(preset.id);
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = isOn;
+        cb.style.marginRight = '8px';
+        cb.addEventListener('change', async (e) => {
+          if (e.target.checked) {
+            appLinksConfig.enabledApps.push(preset.id);
+          } else {
+            appLinksConfig.enabledApps = appLinksConfig.enabledApps.filter(id => id !== preset.id);
+          }
+          await saveAppLinksConfig();
+        });
+        row.appendChild(cb);
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'settings-app-name';
+        nameSpan.textContent = preset.name;
+        row.appendChild(nameSpan);
+        list.appendChild(row);
       });
-      row.appendChild(delBtn);
-      appsList.appendChild(row);
-    });
-    appsField.appendChild(appsList);
-
-    if (appLinksConfig.apps.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'settings-row-desc';
-      empty.style.padding = '8px 0';
-      empty.textContent = 'No apps added yet. Add one below.';
-      appsField.appendChild(empty);
+      container.appendChild(list);
     }
 
-    // Add app form
-    const addForm = document.createElement('div');
-    addForm.className = 'settings-app-add-form';
-    addForm.innerHTML = `
-      <input type="text" class="settings-terminal-input" id="addAppName" placeholder="Name (e.g. VS Code)" style="margin-bottom:6px">
-      <input type="text" class="settings-terminal-input" id="addAppScheme" placeholder="URL scheme (e.g. vscode://file/)" style="margin-bottom:6px">
-      <label class="settings-app-checkbox"><input type="checkbox" id="addAppUsesBase" checked> Append base path</label>
-    `;
-    const addBtn = document.createElement('button');
-    addBtn.className = 'settings-app-add-btn';
-    addBtn.style.width = '100%';
-    addBtn.style.marginTop = '6px';
-    addBtn.textContent = 'Add App';
-    addBtn.addEventListener('click', async () => {
-      const name = addForm.querySelector('#addAppName').value.trim();
-      const scheme = addForm.querySelector('#addAppScheme').value.trim();
-      const usesBasePath = addForm.querySelector('#addAppUsesBase').checked;
-      if (!name || !scheme) return;
-      appLinksConfig.apps.push({ name, scheme, usesBasePath });
-      await saveAppLinksConfig();
-      renderSettingsView();
-    });
-    addForm.appendChild(addBtn);
-    appsField.appendChild(addForm);
+    // Editors section
+    const editorsField = document.createElement('div');
+    editorsField.className = 'settings-terminal-field';
+    editorsField.style.marginTop = '12px';
+    const editorsLabel = document.createElement('label');
+    editorsLabel.className = 'settings-row-label';
+    editorsLabel.textContent = 'Editors';
+    editorsField.appendChild(editorsLabel);
+    const editorsDesc = document.createElement('div');
+    editorsDesc.className = 'settings-row-desc';
+    editorsDesc.style.marginBottom = '8px';
+    editorsDesc.textContent = 'Open files and folders in your editor. Works automatically if the app is installed.';
+    editorsField.appendChild(editorsDesc);
+    renderAppCheckboxes(editorsField, APP_PRESETS.filter(p => p.type === 'editor'));
+    appSection.appendChild(editorsField);
 
-    appSection.appendChild(appsField);
+    // Terminals section
+    const terminalsField = document.createElement('div');
+    terminalsField.className = 'settings-terminal-field';
+    terminalsField.style.marginTop = '12px';
+    const terminalsLabel = document.createElement('label');
+    terminalsLabel.className = 'settings-row-label';
+    terminalsLabel.textContent = 'Terminals';
+    terminalsField.appendChild(terminalsLabel);
+    const terminalsDesc = document.createElement('div');
+    terminalsDesc.className = 'settings-row-desc';
+    terminalsDesc.style.marginBottom = '8px';
+    terminalsDesc.textContent = 'Open a terminal in any project folder — great for CLI tools like Claude Code.';
+    terminalsField.appendChild(terminalsDesc);
+    renderAppCheckboxes(terminalsField, APP_PRESETS.filter(p => p.type === 'terminal'));
+
+    // Terminal setup callout
+    const setupNote = document.createElement('div');
+    setupNote.className = 'settings-setup-callout';
+    setupNote.innerHTML = `
+      ${createLucideIcon('info', 14).outerHTML}
+      <div>
+        <strong>One-time setup required</strong>
+        <div class="settings-row-desc" style="margin-top:2px">Terminals need <strong>Hatch</strong>, a free helper app, to handle <code>terminal://</code> links. <a href="https://github.com/nicksavarese/hatch" target="_blank">Get Hatch</a></div>
+      </div>
+    `;
+    terminalsField.appendChild(setupNote);
+
+    appSection.appendChild(terminalsField);
+
+    // Tip for custom schemes
+    const tip = document.createElement('div');
+    tip.className = 'settings-row-desc';
+    tip.style.marginTop = '12px';
+    tip.style.padding = '0 2px';
+    tip.textContent = 'For other apps, paste the full URL (e.g. figma://file/abc) directly in the URL field.';
+    appSection.appendChild(tip);
   }
 
   wrap.appendChild(appSection);
@@ -1534,10 +1535,15 @@ function renderSettingsView() {
     <div class="settings-version">Snackbar v1.0</div>
     <div class="settings-byline">by <a href="#" id="settingsDivinerLink">Diviner</a></div>
     <p class="settings-blurb">Built for people who struggle with context switching and staying on task. Visual timers help you see time passing — not just know it's passing. Session tracking shows exactly where your focus went, so you can bill hours accurately or just understand your own patterns.</p>
+    <a href="#" id="settingsSupportLink" class="settings-support-link">${createLucideIcon('heart', 14).outerHTML} Support Snackbar</a>
   `;
   about.querySelector('#settingsDivinerLink').addEventListener('click', (e) => {
     e.preventDefault();
     chrome.tabs.create({ url: 'https://diviner.agency' });
+  });
+  about.querySelector('#settingsSupportLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: 'https://ko-fi.com/divinerone' });
   });
   wrap.appendChild(about);
 
@@ -1644,22 +1650,25 @@ function startTimerTick() {
   }, 1000);
 }
 
-/** Plays 3 short 880Hz beeps via Web Audio API when the countdown timer finishes. */
+/** Plays a soft two-tone chime via Web Audio API when the countdown timer finishes. */
 function playTimerAlert() {
   try {
     const ctx = new AudioContext();
-    for (let i = 0; i < 3; i++) {
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 — gentle ascending arpeggio
+    notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.frequency.value = 880;
+      osc.frequency.value = freq;
       osc.type = 'sine';
-      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.3);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.3 + 0.25);
-      osc.start(ctx.currentTime + i * 0.3);
-      osc.stop(ctx.currentTime + i * 0.3 + 0.25);
-    }
+      const start = ctx.currentTime + i * 0.4;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.15, start + 0.05); // soft attack
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 1.2); // long fade
+      osc.start(start);
+      osc.stop(start + 1.2);
+    });
   } catch {}
 }
 
@@ -1771,43 +1780,51 @@ function renderTimerSection() {
     label.textContent = 'Focus Timer';
     section.appendChild(label);
 
-    const presets = document.createElement('div');
-    presets.className = 'timer-presets';
+    const controls = document.createElement('div');
+    controls.className = 'timer-presets';
 
-    const durations = [
-      { label: '15m', seconds: 15 * 60 },
-      { label: '25m', seconds: 25 * 60 },
-      { label: '30m', seconds: 30 * 60 },
-      { label: '45m', seconds: 45 * 60 },
-      { label: '1h', seconds: 60 * 60 },
-      { label: '2h', seconds: 120 * 60 },
-    ];
+    // Minutes input
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'timer-minutes-input';
+    input.min = '1';
+    input.max = '480';
+    input.value = '25';
+    input.placeholder = 'min';
+    input.setAttribute('aria-label', 'Timer minutes');
+    controls.appendChild(input);
 
-    durations.forEach(({ label: text, seconds }) => {
-      const btn = document.createElement('button');
-      btn.className = 'timer-preset-btn';
-      btn.textContent = text;
-      btn.addEventListener('click', () => {
-        startFocusTimer(seconds);
-        renderActivityView();
-      });
-      presets.appendChild(btn);
+    // Start countdown button
+    const startBtn = document.createElement('button');
+    startBtn.className = 'timer-preset-btn';
+    startBtn.textContent = 'Start';
+    startBtn.addEventListener('click', () => {
+      const mins = parseInt(input.value);
+      if (!mins || mins < 1) return;
+      startFocusTimer(mins * 60);
+      renderActivityView();
     });
+    controls.appendChild(startBtn);
 
     // Stopwatch button (no limit)
     const swBtn = document.createElement('button');
     swBtn.className = 'timer-preset-btn timer-stopwatch-btn';
     swBtn.appendChild(createLucideIcon('play', 12));
     const swLabel = document.createElement('span');
-    swLabel.textContent = 'Open';
+    swLabel.textContent = 'Stopwatch';
     swBtn.appendChild(swLabel);
     swBtn.addEventListener('click', () => {
       startFocusTimer(null);
       renderActivityView();
     });
-    presets.appendChild(swBtn);
+    controls.appendChild(swBtn);
 
-    section.appendChild(presets);
+    // Enter key starts the countdown
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') startBtn.click();
+    });
+
+    section.appendChild(controls);
   } else {
     // Timer is running or stopped with results
     const elapsed = focusTimer.elapsed;
@@ -3347,14 +3364,15 @@ function showGroupModal(existing) {
  */
 function showLinkModal(existing, type, groupId) {
   const isEdit = !!existing;
+  const apps = getEnabledApps();
   const isApp = isEdit && isCustomScheme(existing.url);
-  const hasApps = appLinksConfig.enabled && appLinksConfig.apps.length > 0;
+  const hasApps = appLinksConfig.enabled && apps.length > 0;
 
-  // Try to match existing URL to a configured app so the form pre-fills correctly
+  // Try to match existing URL to an enabled preset so the form pre-fills correctly
   let matchedAppIndex = -1;
   let existingPath = '';
   if (isApp && hasApps) {
-    appLinksConfig.apps.forEach((app, i) => {
+    apps.forEach((app, i) => {
       if (existing.url.startsWith(app.scheme)) {
         matchedAppIndex = i;
         let path = existing.url.slice(app.scheme.length);
@@ -3387,13 +3405,13 @@ function showLinkModal(existing, type, groupId) {
       <div class="modal-field">
         <label>App</label>
         <select id="mAppSelect">
-          ${appLinksConfig.apps.map((a, i) => `<option value="${i}" ${i === matchedAppIndex ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}
+          ${apps.map((a, i) => `<option value="${i}" ${i === matchedAppIndex ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}
         </select>
       </div>
       <div class="modal-field">
         <label>Path ${(() => {
           const idx = matchedAppIndex >= 0 ? matchedAppIndex : 0;
-          const a = appLinksConfig.apps[idx];
+          const a = apps[idx];
           return a && a.usesBasePath && appLinksConfig.basePath ? `<span class="terminal-path-hint">${appLinksConfig.basePath}</span>` : '';
         })()}</label>
         <input type="text" id="mAppPath" value="${escapeHtml(existingPath)}" placeholder="project/folder">
@@ -3421,7 +3439,7 @@ function showLinkModal(existing, type, groupId) {
   const appSelect = $modal.querySelector('#mAppSelect');
   if (appSelect) {
     appSelect.addEventListener('change', () => {
-      const app = appLinksConfig.apps[parseInt(appSelect.value)];
+      const app = apps[parseInt(appSelect.value)];
       const label = $modal.querySelector('#mAppFields label');
       if (label && app) {
         const hint = app.usesBasePath && appLinksConfig.basePath ? appLinksConfig.basePath : '';
@@ -3438,7 +3456,7 @@ function showLinkModal(existing, type, groupId) {
     let url;
     if (isAppMode) {
       const appIndex = parseInt($modal.querySelector('#mAppSelect').value);
-      const app = appLinksConfig.apps[appIndex];
+      const app = apps[appIndex];
       const path = $modal.querySelector('#mAppPath').value.trim();
       if (!title || !app) return;
       const basePath = app.usesBasePath ? appLinksConfig.basePath : '';

@@ -980,6 +980,24 @@ html, body {
   gap: 6px;
 }
 
+/* Number input for custom timer duration */
+.timer-minutes-input {
+  width: 60px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.timer-minutes-input:focus {
+  border-color: #0a84ff;
+}
+
 .timer-preset-btn {
   padding: 6px 12px;
   border: 1px solid var(--border);
@@ -1895,77 +1913,8 @@ html, body {
   margin-bottom: 6px;
 }
 
-/* Collapsible help/info panel with chevron toggle */
-.settings-help-bubble {
-  margin: 12px 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
 
-.settings-help-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.settings-help-toggle span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.settings-help-chevron {
-  transition: transform 200ms;
-}
-
-.settings-help-toggle:hover {
-  background: var(--bg-hover);
-}
-
-.settings-help-content {
-  padding: 0 12px 12px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.settings-help-content p {
-  margin: 8px 0;
-}
-
-.settings-help-content ul {
-  margin: 4px 0;
-  padding-left: 16px;
-}
-
-.settings-help-content li {
-  margin: 2px 0;
-}
-
-.settings-help-content a {
-  color: #0a84ff;
-  text-decoration: none;
-  font-size: 11px;
-}
-
-.settings-help-content a:hover {
-  text-decoration: underline;
-}
-
-.settings-help-content code {
-  font-size: 11px;
-  background: var(--bg-secondary);
-  padding: 1px 4px;
-  border-radius: 3px;
-  border: 1px solid var(--border);
-}
-
-/* Registered app list with delete buttons and add form */
+/* App preset checkboxes */
 .settings-apps-list {
   margin: 8px 0;
 }
@@ -1973,70 +1922,55 @@ html, body {
 .settings-app-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 8px;
-  border-bottom: 1px solid var(--border);
+  padding: 6px 8px;
   font-size: 13px;
-}
-
-.settings-app-delete {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
   cursor: pointer;
-  padding: 2px;
-  border-radius: 4px;
-  display: flex;
-}
-
-.settings-app-delete:hover {
-  background: var(--bg-hover);
-  color: var(--danger, #ff453a);
-}
-
-.settings-app-add-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.settings-app-add-btn {
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  background: var(--bg-secondary);
-  color: var(--text);
   border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 12px;
-  white-space: nowrap;
 }
 
-.settings-app-add-btn:hover {
+.settings-app-row:hover {
   background: var(--bg-hover);
-}
-
-.settings-app-add-form {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-}
-
-.settings-app-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.settings-app-checkbox input[type="checkbox"] {
-  margin: 0;
 }
 
 .settings-app-name {
   font-weight: 500;
   font-size: 13px;
+}
+
+.settings-setup-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.settings-setup-callout svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.settings-setup-callout code {
+  font-size: 11px;
+  background: var(--bg-active);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.settings-setup-callout a {
+  color: #0a84ff;
+  text-decoration: none;
+}
+
+.settings-setup-callout a:hover {
+  text-decoration: underline;
 }
 
 .settings-terminal-input {
@@ -2152,4 +2086,22 @@ html, body {
   color: var(--text-secondary);
   text-align: left;
   margin: 0;
+}
+
+.settings-support-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.settings-support-link:hover {
+  color: #ff6b6b;
+}
+
+.settings-support-link svg {
+  color: #ff6b6b;
 }
