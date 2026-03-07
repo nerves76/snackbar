@@ -1,0 +1,177 @@
+{
+  "spaces": [
+    {
+      "id": "s_demo1",
+      "name": "Acme Redesign",
+      "icon": "briefcase",
+      "color": "#0a84ff",
+      "featured": [
+        { "id": "f_d1", "title": "Project Brief", "url": "https://docs.google.com/document/d/acme-brief" },
+        { "id": "f_d2", "title": "Figma Mockups", "url": "https://figma.com/file/acme-redesign" },
+        { "id": "f_d3", "title": "Staging Site", "url": "https://staging.acme.com", "notes": "Password resets every Monday.\nAsk Jamie for new creds if locked out.", "loginUser": "admin@acme.com", "loginPass": "st4ging2026!" }
+      ],
+      "groups": [
+        {
+          "id": "g_d1",
+          "name": "Design",
+          "collapsed": false,
+          "links": [
+            { "id": "l_d1", "title": "Brand Guidelines", "url": "https://acme.com/brand" },
+            { "id": "l_d2", "title": "Color Palette", "url": "https://coolors.co/palette/acme" },
+            { "id": "l_d3", "title": "Icon Library", "url": "https://lucide.dev" }
+          ]
+        },
+        {
+          "id": "g_d2",
+          "name": "Development",
+          "collapsed": false,
+          "links": [
+            { "id": "l_d4", "title": "GitHub Repo", "url": "https://github.com/acme/redesign" },
+            { "id": "l_d5", "title": "Vercel Dashboard", "url": "https://vercel.com/acme" },
+            { "id": "l_d6", "title": "API Docs", "url": "https://api.acme.com/docs" }
+          ]
+        },
+        {
+          "id": "g_d3",
+          "name": "Project Management",
+          "collapsed": false,
+          "links": [
+            { "id": "l_d7", "title": "Linear Board", "url": "https://linear.app/acme/project/redesign" },
+            { "id": "l_d8", "title": "Notion Wiki", "url": "https://notion.so/acme/redesign-wiki" },
+            { "id": "l_d18", "title": "Loom Recordings", "url": "https://loom.com/team/acme" }
+          ]
+        }
+      ],
+      "notes": [
+        { "id": "n_d1", "title": "Homepage copy draft", "content": "Hero: \"Built for teams that move fast.\"\n\nSubhead: Simple tools, real results. Acme gives your team everything it needs — nothing it doesn't.\n\nCTA: Start free trial", "pinned": true, "createdAt": "2026-03-01T10:00:00Z", "updatedAt": "2026-03-05T14:30:00Z" },
+        { "id": "n_d2", "title": "Client feedback - Round 2", "content": "- Loves the new nav layout\n- Wants bolder CTA buttons\n- Asked about dark mode support\n- Footer needs legal links added", "pinned": false, "createdAt": "2026-03-03T09:00:00Z", "updatedAt": "2026-03-04T16:00:00Z" },
+        { "id": "n_d3", "title": "Color system notes", "content": "Primary: #0a84ff\nSecondary: #30d158\nNeutral: #8e8e93\n\nDark mode needs separate tokens. Don't just invert — use elevated surfaces with subtle opacity shifts.", "pinned": false, "createdAt": "2026-02-28T11:00:00Z", "updatedAt": "2026-03-02T09:15:00Z" },
+        { "id": "n_d4", "title": "Accessibility checklist", "content": "- All interactive elements need 44px touch targets\n- Contrast ratio 4.5:1 minimum for body text\n- Skip nav link on every page\n- Alt text audit on all hero images\n- Test with VoiceOver before launch", "pinned": false, "createdAt": "2026-03-04T08:00:00Z", "updatedAt": "2026-03-05T10:00:00Z" }
+      ],
+      "todos": [
+        { "id": "t_d1", "title": "Launch Checklist", "pinned": true, "items": [
+          { "id": "ti_1", "text": "Final copy review", "done": true },
+          { "id": "ti_2", "text": "Cross-browser testing", "done": true },
+          { "id": "ti_3", "text": "Performance audit", "done": false },
+          { "id": "ti_4", "text": "Client sign-off", "done": false },
+          { "id": "ti_5", "text": "DNS cutover", "done": false }
+        ]}
+      ]
+    },
+    {
+      "id": "s_demo2",
+      "name": "Marketing",
+      "icon": "megaphone",
+      "color": "#ff6b35",
+      "featured": [
+        { "id": "f_d4", "title": "Analytics Dashboard", "url": "https://analytics.google.com" },
+        { "id": "f_d5", "title": "Social Scheduler", "url": "https://buffer.com/publish" }
+      ],
+      "groups": [
+        {
+          "id": "g_d4",
+          "name": "Content",
+          "collapsed": false,
+          "links": [
+            { "id": "l_d9", "title": "Blog CMS", "url": "https://wordpress.com/posts" },
+            { "id": "l_d10", "title": "SEO Tools", "url": "https://ahrefs.com/dashboard" },
+            { "id": "l_d11", "title": "Image Assets", "url": "https://drive.google.com/drive/marketing-assets" }
+          ]
+        },
+        {
+          "id": "g_d5",
+          "name": "Ads",
+          "collapsed": false,
+          "links": [
+            { "id": "l_d12", "title": "Google Ads", "url": "https://ads.google.com" },
+            { "id": "l_d13", "title": "Meta Business Suite", "url": "https://business.facebook.com" }
+          ]
+        }
+      ],
+      "notes": [
+        { "id": "n_d5", "title": "Blog post ideas", "content": "- \"5 SEO mistakes we fixed that doubled organic traffic\"\n- Case study: Acme redesign before/after\n- How to audit your site speed in 10 minutes\n- The death of third-party cookies — what it means for us", "pinned": true, "createdAt": "2026-02-20T14:00:00Z", "updatedAt": "2026-03-05T11:30:00Z" },
+        { "id": "n_d6", "title": "Q1 campaign metrics", "content": "Google Ads:\n  Spend: $4,200\n  Clicks: 3,841\n  CPC: $1.09\n  Conversions: 127\n\nMeta:\n  Spend: $2,800\n  Reach: 89,000\n  Clicks: 1,420\n  Conversions: 43", "pinned": false, "createdAt": "2026-03-01T09:00:00Z", "updatedAt": "2026-03-05T16:00:00Z" }
+      ],
+      "todos": [
+        { "id": "t_d2", "title": "Content calendar", "pinned": false, "items": [
+          { "id": "ti_6", "text": "Write March blog post", "done": true },
+          { "id": "ti_7", "text": "Schedule social posts for next week", "done": false },
+          { "id": "ti_8", "text": "Update landing page copy", "done": false },
+          { "id": "ti_9", "text": "Record product demo video", "done": false }
+        ]}
+      ]
+    },
+    {
+      "id": "s_demo3",
+      "name": "Personal",
+      "icon": "coffee",
+      "color": "#a855f7",
+      "featured": [
+        { "id": "f_d6", "title": "Gmail", "url": "https://mail.google.com" },
+        { "id": "f_d7", "title": "Google Drive", "url": "https://drive.google.com" },
+        { "id": "f_d8", "title": "Spotify", "url": "https://open.spotify.com" }
+      ],
+      "groups": [
+        {
+          "id": "g_d6",
+          "name": "Finance",
+          "collapsed": false,
+          "links": [
+            { "id": "l_d14", "title": "Bank of America", "url": "https://bankofamerica.com" },
+            { "id": "l_d15", "title": "Mint", "url": "https://mint.intuit.com" }
+          ]
+        },
+        {
+          "id": "g_d7",
+          "name": "Learning",
+          "collapsed": false,
+          "links": [
+            { "id": "l_d16", "title": "Coursera", "url": "https://coursera.org" },
+            { "id": "l_d17", "title": "MDN Web Docs", "url": "https://developer.mozilla.org" }
+          ]
+        }
+      ],
+      "notes": [
+        { "id": "n_d7", "title": "Books to read", "content": "- Atomic Habits — James Clear\n- Four Thousand Weeks — Oliver Burkeman\n- Stolen Focus — Johann Hari\n- Building a Second Brain — Tiago Forte", "pinned": true, "createdAt": "2026-01-15T10:00:00Z", "updatedAt": "2026-03-01T08:00:00Z" }
+      ],
+      "todos": [
+        { "id": "t_d3", "title": "Weekend errands", "pinned": false, "items": [
+          { "id": "ti_10", "text": "Grocery run", "done": false },
+          { "id": "ti_11", "text": "Return Amazon package", "done": true },
+          { "id": "ti_12", "text": "Schedule dentist appointment", "done": false }
+        ]}
+      ]
+    }
+  ],
+  "activeSpaceId": "s_demo1",
+  "timeTracking": {
+    "2026-03-06": {
+      "figma.com": 3420,
+      "github.com": 2580,
+      "staging.acme.com": 1860,
+      "docs.google.com": 1200,
+      "stackoverflow.com": 840,
+      "slack.com": 720,
+      "youtube.com": 360,
+      "acme.com": 180
+    },
+    "2026-03-05": {
+      "github.com": 4200,
+      "figma.com": 3600,
+      "vercel.com": 1800,
+      "notion.so": 1500,
+      "stackoverflow.com": 1200,
+      "docs.google.com": 900,
+      "slack.com": 600
+    }
+  },
+  "notepad": {
+    "2026-03-06": "Kicked off the morning with the Acme homepage redesign. Need to finalize hero copy by end of day. Jamie flagged a few accessibility issues on the staging site — added those to the todo list.\n\nAfternoon: focus session on the landing page build. Try to get the animations locked in before the client call tomorrow."
+  },
+  "featureToggles": {
+    "activity": true,
+    "notepad": true,
+    "calendar": true,
+    "focusTimer": true
+  }
+}
