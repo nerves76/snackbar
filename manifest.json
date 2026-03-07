@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Snackbar",
   "version": "1.0",
-  "description": "A visual focus timer and productivity sidebar. See where your time goes, stay on task, and keep every project organized.",
+  "description": "Organize projects into workspaces with links, notes, and todos — then stay focused with a visual timer that tracks which sites you spend time on, all in your sidebar.",
   "permissions": [
     "sidePanel",
     "storage",

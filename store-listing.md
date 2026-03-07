@@ -3,7 +3,7 @@
 **Name:** Snackbar
 
 **Short description:**
-A visual focus timer and productivity sidebar. See where your time goes, stay on task, and keep every project organized.
+Organize projects into workspaces with links, notes, and todos — then stay focused with a visual timer that tracks which sites you spend time on, all in your sidebar.
 
 **Detailed description:**
 
@@ -19,7 +19,7 @@ Right-click any saved link to attach notes and login credentials. Keep project c
 Every workspace gets its own collection of notes and todo lists. Pin important ones to the top. There's also a daily notepad with voice transcription for quick capture — just hit the mic and talk.
 
 **Visual Focus Timer**
-Set a countdown (15, 25, 30, 45, or 60 min) or use the stopwatch. A circular progress ring keeps time visible — no need to check the clock. Visual timers are especially helpful for ADHD brains that lose track of time. Snackbar also tracks which sites you visit during each session, so you can see where focus actually went.
+Set any countdown or use the stopwatch. A circular progress ring keeps time visible — no need to check the clock. Visual timers are especially helpful for ADHD brains that lose track of time. Snackbar also tracks which sites you visit during each session, so you can see where focus actually went.
 
 **Automatic Time Tracking**
 Snackbar quietly logs time spent on every site, every day. See daily breakdowns with color-coded bars. Export to CSV for client billing or personal review.
@@ -32,6 +32,9 @@ Switch spaces (1-9), jump to views (T/N/C), start/stop timers (F) — all withou
 
 **Privacy & Your Data**
 Snackbar doesn't have a server. Your data lives on your computer in Chrome's local storage — that's it. If you want backup or sync across devices, you can connect your own Google Drive. Your data goes straight from your browser to your Drive — we never see it, store it, or touch it. You're in complete control.
+
+**App Links**
+Open projects directly in your editor or terminal from the sidebar. Enable VS Code, Cursor, or any of 7 supported terminals, set your projects folder, and launch with one click. Terminal support uses Hatch, a free open-source helper app for macOS.
 
 **More**
 - Works on Windows, Mac, and Linux
