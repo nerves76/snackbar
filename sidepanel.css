@@ -1985,6 +1985,20 @@ html, body {
   font-family: inherit;
 }
 
+select.settings-terminal-input {
+  appearance: auto;
+  cursor: pointer;
+}
+
+.settings-link {
+  color: #0a84ff;
+  text-decoration: none;
+}
+
+.settings-link:hover {
+  text-decoration: underline;
+}
+
 .settings-shortcut kbd {
   display: inline-block;
   min-width: 32px;

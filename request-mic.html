@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; text-align: center; padding: 40px 20px; background: #1c1c1e; color: #fff; }
+    h2 { margin-bottom: 8px; }
+    p { color: #8e8e93; font-size: 14px; }
+    .status { margin-top: 20px; font-size: 14px; }
+    .granted { color: #30d158; }
+    .denied { color: #ff453a; }
+  </style>
+</head>
+<body>
+  <h2>Microphone Access</h2>
+  <p>Snackbar needs microphone permission for voice transcription.</p>
+  <div class="status" id="status">Requesting access...</div>
+  <script>
+    (async () => {
+      const statusEl = document.getElementById('status');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(t => t.stop());
+        statusEl.textContent = 'Microphone access granted. You can close this tab.';
+        statusEl.className = 'status granted';
+        setTimeout(() => window.close(), 1500);
+      } catch (err) {
+        statusEl.textContent = 'Microphone access denied. Please allow it and try again.';
+        statusEl.className = 'status denied';
+      }
+    })();
+  </script>
+</body>
+</html>

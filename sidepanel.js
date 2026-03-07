@@ -268,6 +268,13 @@ let appLinksConfig = {
 function getEnabledApps() {
   return APP_PRESETS.filter(p => appLinksConfig.enabledApps.includes(p.id));
 }
+
+// Transcription config — user provides their own API key
+let transcriptionConfig = {
+  provider: 'groq', // 'groq' or 'openai'
+  apiKey: ''
+};
+
 // Currently viewed date on each date-navigable panel
 let activityDate = new Date().toISOString().slice(0, 10);
 let notepadDate = new Date().toISOString().slice(0, 10);
@@ -348,7 +355,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => noti
 
 /** Loads feature toggles and app-links config from storage, merging with defaults. */
 async function loadFeatures() {
-  const data = await chrome.storage.local.get(['featureToggles', 'appLinksConfig']);
+  const data = await chrome.storage.local.get(['featureToggles', 'appLinksConfig', 'transcriptionConfig']);
   if (data.featureToggles) Object.assign(features, data.featureToggles);
   if (data.appLinksConfig) {
     // Migrate old format: apps[] → enabledApps[]
@@ -364,6 +371,11 @@ async function loadFeatures() {
     }
     Object.assign(appLinksConfig, data.appLinksConfig);
   }
+  if (data.transcriptionConfig) Object.assign(transcriptionConfig, data.transcriptionConfig);
+}
+
+async function saveTranscriptionConfig() {
+  await chrome.storage.local.set({ transcriptionConfig: { ...transcriptionConfig } });
 }
 
 async function saveFeatures() {
@@ -1364,6 +1376,65 @@ function renderSettingsView() {
 
   wrap.appendChild(appSection);
 
+  // Transcription section
+  const transcriptionSection = document.createElement('div');
+  transcriptionSection.className = 'settings-section';
+  const transcriptionLabel = document.createElement('div');
+  transcriptionLabel.className = 'settings-section-label';
+  transcriptionLabel.textContent = 'Voice Transcription';
+  transcriptionSection.appendChild(transcriptionLabel);
+
+  const transcriptionDesc = document.createElement('div');
+  transcriptionDesc.className = 'settings-row-desc';
+  transcriptionDesc.style.marginBottom = '8px';
+  transcriptionDesc.textContent = 'Add an API key to enable the mic button on your daily notepad. Your key is stored locally.';
+  transcriptionSection.appendChild(transcriptionDesc);
+
+  const providerField = document.createElement('div');
+  providerField.className = 'settings-terminal-field';
+  providerField.innerHTML = `
+    <label class="settings-row-label">Provider</label>
+    <select class="settings-terminal-input" id="transcriptionProvider">
+      <option value="groq" ${transcriptionConfig.provider === 'groq' ? 'selected' : ''}>Groq (free)</option>
+      <option value="openai" ${transcriptionConfig.provider === 'openai' ? 'selected' : ''}>OpenAI</option>
+    </select>
+  `;
+  providerField.querySelector('select').addEventListener('change', async (e) => {
+    transcriptionConfig.provider = e.target.value;
+    await saveTranscriptionConfig();
+  });
+  transcriptionSection.appendChild(providerField);
+
+  const keyField = document.createElement('div');
+  keyField.className = 'settings-terminal-field';
+  keyField.style.marginTop = '8px';
+  keyField.innerHTML = `
+    <label class="settings-row-label">API Key</label>
+    <input type="password" class="settings-terminal-input" value="${escapeHtml(transcriptionConfig.apiKey)}" placeholder="Paste your API key">
+  `;
+  keyField.querySelector('input').addEventListener('change', async (e) => {
+    transcriptionConfig.apiKey = e.target.value.trim();
+    await saveTranscriptionConfig();
+  });
+  transcriptionSection.appendChild(keyField);
+
+  const keyTip = document.createElement('div');
+  keyTip.className = 'settings-row-desc';
+  keyTip.style.marginTop = '6px';
+  keyTip.innerHTML = 'Get a free key at <a href="#" class="settings-link" id="transcriptionKeyLink">groq.com</a>';
+  transcriptionSection.appendChild(keyTip);
+  // Defer event listener since innerHTML replaces elements
+  setTimeout(() => {
+    const link = document.getElementById('transcriptionKeyLink');
+    if (link) link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const url = transcriptionConfig.provider === 'openai' ? 'https://platform.openai.com/api-keys' : 'https://console.groq.com/keys';
+      chrome.tabs.create({ url });
+    });
+  });
+
+  wrap.appendChild(transcriptionSection);
+
   // Theme section
   const themeSection = document.createElement('div');
   themeSection.className = 'settings-section';
@@ -1689,10 +1760,18 @@ function updateTimerDisplay() {
     timeEl.textContent = formatTimerDisplay(elapsed);
   }
 
-  if (ringEl && duration) {
+  const ringSegments = document.querySelectorAll('.timer-ring-progress');
+  if (ringSegments.length && duration) {
     const progress = Math.min(elapsed / duration, 1);
-    const circumference = 2 * Math.PI * 54; // matches the SVG circle r=54
-    ringEl.style.strokeDashoffset = circumference * (1 - progress);
+    const circumference = 2 * Math.PI * 54;
+    ringSegments.forEach(seg => {
+      const type = seg.dataset.segment;
+      let len = 0;
+      if (type === 'green') len = Math.min(progress, 0.5) * circumference;
+      else if (type === 'orange') len = Math.max(0, Math.min(progress - 0.5, 0.25)) * circumference;
+      else if (type === 'red') len = Math.max(0, Math.min(progress - 0.75, 0.25)) * circumference;
+      seg.style.strokeDasharray = `${len} ${circumference - len}`;
+    });
   }
 
   // Update sites list
@@ -1838,13 +1917,26 @@ function renderTimerSection() {
     if (duration) {
       const progress = Math.min(elapsed / duration, 1);
       const circumference = 2 * Math.PI * 54;
-      const ringColor = focusTimer.finished ? '#30d158' : '#0a84ff';
+      // Three segments: green 0-50%, orange 50-75%, red 75-100%
+      const greenLen = Math.min(progress, 0.5) * circumference;
+      const orangeLen = Math.max(0, Math.min(progress - 0.5, 0.25)) * circumference;
+      const redLen = Math.max(0, Math.min(progress - 0.75, 0.25)) * circumference;
+      // Each segment starts where the previous one ended (rotate from -90° top)
+      const greenRotate = -90;
+      const orangeRotate = -90 + (0.5 * 360);
+      const redRotate = -90 + (0.75 * 360);
       ringWrap.innerHTML = `
         <svg class="timer-ring" viewBox="0 0 120 120">
           <circle cx="60" cy="60" r="54" fill="none" stroke="var(--bg-secondary)" stroke-width="6" />
-          <circle class="timer-ring-progress" cx="60" cy="60" r="54" fill="none" stroke="${ringColor}" stroke-width="6"
-            stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference * (1 - progress)}"
-            transform="rotate(-90 60 60)" />
+          <circle class="timer-ring-progress" data-segment="green" cx="60" cy="60" r="54" fill="none" stroke="#30d158" stroke-width="6"
+            stroke-dasharray="${greenLen} ${circumference - greenLen}"
+            transform="rotate(${greenRotate} 60 60)" />
+          <circle class="timer-ring-progress" data-segment="orange" cx="60" cy="60" r="54" fill="none" stroke="#ff9f0a" stroke-width="6"
+            stroke-dasharray="${orangeLen} ${circumference - orangeLen}"
+            transform="rotate(${orangeRotate} 60 60)" />
+          <circle class="timer-ring-progress" data-segment="red" cx="60" cy="60" r="54" fill="none" stroke="#ff453a" stroke-width="6"
+            stroke-dasharray="${redLen} ${circumference - redLen}"
+            transform="rotate(${redRotate} 60 60)" />
         </svg>`;
     }
 
@@ -2086,8 +2178,9 @@ async function renderActivityView() {
 // ── Notepad View ──
 
 let notepadSaveTimer = null;   // debounce timer for auto-saving notepad content
-let recognition = null;        // SpeechRecognition instance (Web Speech API)
 let isTranscribing = false;
+let mediaRecorder = null;      // MediaRecorder for voice capture
+let audioChunks = [];          // recorded audio data
 let notepadMode = 'daily';     // 'daily' = date-based notes, 'notes' = workspace notes, 'todos' = workspace todo lists
 let activeSpaceNoteId = null;  // ID of the space note currently open in the editor
 let activeSpaceTodoId = null;  // ID of the todo list currently open in the editor
@@ -2146,9 +2239,17 @@ async function renderNotepadView() {
 
 /** Renders the daily notepad: date navigation, mic transcription toolbar, title, and textarea. */
 async function renderDailyNotepad() {
-  // Stop transcription if navigating away from today
+  // Abort recording if navigating away from today
   const today = new Date().toISOString().slice(0, 10);
-  if (notepadDate !== today && isTranscribing) stopTranscription();
+  if (notepadDate !== today && isTranscribing) {
+    isTranscribing = false;
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      mediaRecorder.stop();
+    }
+    mediaRecorder = null;
+    audioChunks = [];
+  }
 
   // Header with date nav
   const header = document.createElement('div');
@@ -2209,27 +2310,39 @@ async function renderDailyNotepad() {
   status.textContent = '';
   toolbar.appendChild(status);
 
-  if (notepadDate === today) {
-    const micBtn = document.createElement('button');
-    micBtn.className = 'notepad-mic-btn' + (isTranscribing ? ' recording' : '');
-    micBtn.title = isTranscribing ? 'Stop transcription' : 'Start transcription';
-    micBtn.appendChild(createLucideIcon(isTranscribing ? 'mic-off' : 'mic', 16));
+  if (notepadDate === today && transcriptionConfig.apiKey) {
     if (isTranscribing) {
+      const stopBtn = document.createElement('button');
+      stopBtn.className = 'notepad-mic-btn recording';
+      stopBtn.title = 'Stop & transcribe';
+      stopBtn.appendChild(createLucideIcon('square', 14));
+      const stopLabel = document.createElement('span');
+      stopLabel.textContent = 'Stop';
+      stopBtn.appendChild(stopLabel);
       const dot = document.createElement('span');
       dot.className = 'recording-dot';
-      micBtn.appendChild(dot);
-    }
-    micBtn.addEventListener('click', async () => {
-      if (isTranscribing) {
-        stopTranscription();
-      } else {
+      stopBtn.appendChild(dot);
+      stopBtn.addEventListener('click', async () => {
         const textarea = $content.querySelector('.notepad-textarea');
-        startTranscription(textarea, status);
-      }
-      // Re-render to update UI; renderDailyNotepad re-binds activeTextarea via attachRecognitionToTextarea
-      await renderNotepadView();
-    });
-    toolbar.appendChild(micBtn);
+        await stopTranscription(textarea, status);
+        renderNotepadView();
+      });
+      toolbar.appendChild(stopBtn);
+    } else {
+      const recBtn = document.createElement('button');
+      recBtn.className = 'notepad-mic-btn';
+      recBtn.title = 'Record voice note';
+      recBtn.appendChild(createLucideIcon('mic', 14));
+      const recLabel = document.createElement('span');
+      recLabel.textContent = 'Record';
+      recBtn.appendChild(recLabel);
+      recBtn.addEventListener('click', async () => {
+        const textarea = $content.querySelector('.notepad-textarea');
+        await startTranscription(textarea, status);
+        renderNotepadView();
+      });
+      toolbar.appendChild(recBtn);
+    }
   }
 
   $content.appendChild(toolbar);
@@ -2274,11 +2387,6 @@ async function renderDailyNotepad() {
   });
 
   $content.appendChild(textarea);
-
-  // If transcribing, re-attach the recognition output to this textarea
-  if (isTranscribing && recognition) {
-    attachRecognitionToTextarea(textarea, status);
-  }
 }
 
 // ── Space Notes ──
@@ -2688,80 +2796,117 @@ async function flushNotepad() {
   await saveNotepadContent(titleInput ? titleInput.value : '', textarea.value);
 }
 
-// ── Speech-to-Text ──
+// ── Speech-to-Text (Whisper API via user's own key) ──
 
-let activeTextarea = null; // textarea receiving transcription output
-let activeStatus = null;   // status label element for transcription state
-
-/** Re-attaches an already-running SpeechRecognition to a (re-rendered) textarea. */
-function attachRecognitionToTextarea(textarea, status) {
-  activeTextarea = textarea;
-  activeStatus = status;
+/** Checks if microphone permission has been granted. */
+async function hasMicPermission() {
+  try {
+    const result = await navigator.permissions.query({ name: 'microphone' });
+    return result.state === 'granted';
+  } catch { return false; }
 }
 
-/**
- * Starts continuous speech-to-text transcription using the Web Speech API.
- * Final results are appended as timestamped lines and auto-saved.
- */
-function startTranscription(textarea, status) {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    status.textContent = 'Speech recognition not supported';
+/** Opens a tab to request microphone permission (required once from a non-sidepanel context). */
+function requestMicPermission() {
+  chrome.tabs.create({ url: chrome.runtime.getURL('request-mic.html') });
+}
+
+/** Starts recording audio from the microphone. */
+async function startTranscription(textarea, status) {
+  if (!transcriptionConfig.apiKey) {
+    status.textContent = 'Add API key in Settings';
+    setTimeout(() => { status.textContent = ''; }, 3000);
     return;
   }
 
-  recognition = new SR();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = 'en-US';
-  isTranscribing = true;
+  const hasMic = await hasMicPermission();
+  if (!hasMic) {
+    status.textContent = 'Granting mic access...';
+    requestMicPermission();
+    return;
+  }
 
-  activeTextarea = textarea;
-  activeStatus = status;
-
-  recognition.onresult = (event) => {
-    if (!activeTextarea) return;
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (event.results[i].isFinal) {
-        const transcript = event.results[i][0].transcript.trim();
-        if (!transcript) continue;
-        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const line = `[${time}] ${transcript}\n`;
-        activeTextarea.value += line;
-        activeTextarea.scrollTop = activeTextarea.scrollHeight;
-        const titleEl = document.querySelector('.notepad-title');
-        saveNotepadContent(titleEl ? titleEl.value : '', activeTextarea.value);
-      }
-    }
-  };
-
-  recognition.onerror = (event) => {
-    if (event.error === 'not-allowed') {
-      if (activeStatus) activeStatus.textContent = 'Mic access denied';
-      stopTranscription();
-      renderNotepadView();
-    }
-  };
-
-  recognition.onend = () => {
-    // Browser stops recognition after periods of silence; auto-restart to keep it going
-    if (isTranscribing) {
-      try { recognition.start(); } catch {}
-    }
-  };
-
-  recognition.start();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    audioChunks = [];
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.start();
+    isTranscribing = true;
+    status.textContent = 'Recording...';
+  } catch {
+    status.textContent = 'Mic access denied';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  }
 }
 
-/** Stops speech recognition and clears the active textarea/status references. */
-function stopTranscription() {
-  isTranscribing = false;
-  if (recognition) {
-    try { recognition.stop(); } catch {}
-    recognition = null;
+/** Stops recording and sends audio to the Whisper API for transcription. */
+async function stopTranscription(textarea, status) {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+    isTranscribing = false;
+    return;
   }
-  activeTextarea = null;
-  activeStatus = null;
+
+  return new Promise((resolve) => {
+    mediaRecorder.onstop = async () => {
+      // Stop all mic tracks
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      isTranscribing = false;
+
+      if (audioChunks.length === 0) { resolve(); return; }
+
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      audioChunks = [];
+
+      if (status) status.textContent = 'Transcribing...';
+
+      try {
+        const text = await sendToWhisperAPI(blob);
+        if (text && textarea) {
+          const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          textarea.value += (textarea.value && !textarea.value.endsWith('\n') ? '\n' : '') + `[${time}] ${text}\n`;
+          textarea.scrollTop = textarea.scrollHeight;
+          const titleEl = document.querySelector('.notepad-title');
+          saveNotepadContent(titleEl ? titleEl.value : '', textarea.value);
+        }
+        if (status) status.textContent = '';
+      } catch (err) {
+        if (status) status.textContent = 'Transcription failed';
+        setTimeout(() => { if (status) status.textContent = ''; }, 3000);
+      }
+      resolve();
+    };
+    mediaRecorder.stop();
+  });
+}
+
+/** Sends an audio blob to the configured Whisper API and returns the transcript text. */
+async function sendToWhisperAPI(blob) {
+  const formData = new FormData();
+  formData.append('file', blob, 'recording.webm');
+  formData.append('model', 'whisper-large-v3');
+
+  let url;
+  if (transcriptionConfig.provider === 'openai') {
+    url = 'https://api.openai.com/v1/audio/transcriptions';
+    formData.set('model', 'whisper-1');
+  } else {
+    url = 'https://api.groq.com/openai/v1/audio/transcriptions';
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${transcriptionConfig.apiKey}` },
+    body: formData
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`API error ${res.status}: ${errText}`);
+  }
+
+  const data = await res.json();
+  return data.text || '';
 }
 
 // ── Calendar View ──
