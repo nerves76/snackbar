@@ -1,7 +1,9 @@
+// Open sidepanel when user clicks the extension icon (instead of a popup)
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 // ── Theme-aware Icon ──
 
+/** Sets the toolbar icon variant to match the current light/dark theme. */
 function setIconForTheme(isDark) {
   const suffix = isDark ? '-dark' : '';
   chrome.action.setIcon({
@@ -13,6 +15,7 @@ function setIconForTheme(isDark) {
   });
 }
 
+/** Resolves the effective theme (explicit > system > fallback) and updates the icon. */
 async function detectAndSetIcon() {
   const { theme } = await chrome.storage.local.get('theme');
   // If user chose explicit light/dark, use that
@@ -23,34 +26,38 @@ async function detectAndSetIcon() {
   if (typeof matchMedia !== 'undefined') {
     setIconForTheme(matchMedia('(prefers-color-scheme: dark)').matches);
   } else {
-    // Can't detect in service worker — read from storage flag set by sidepanel
+    // Service workers lack matchMedia; fall back to flag the sidepanel writes
     const { systemIsDark } = await chrome.storage.local.get('systemIsDark');
     setIconForTheme(systemIsDark !== false);
   }
 }
 
+// Sidepanel sends 'themeChanged' when user toggles theme in the UI
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'themeChanged') setIconForTheme(msg.isDark);
 });
 
-// Also react to storage changes (for when sidepanel updates theme)
+// Also react to storage changes (covers sidepanel writes we didn't receive via message)
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.theme || changes.systemIsDark) detectAndSetIcon();
 });
 
+// Set icon immediately on service worker startup
 detectAndSetIcon();
 
 // ── Time Tracking ──
 
+// In-memory state for the currently tracked browsing session.
+// Persisted to session storage so it survives service worker restarts.
 let tracking = {
-  tabId: null,
-  domain: null,
-  startTime: null,
-  isIdle: false,
-  windowFocused: true
+  tabId: null,         // active tab being timed
+  domain: null,        // hostname of the active tab
+  startTime: null,     // epoch ms when current segment started
+  isIdle: false,       // true when user input has stopped (idle API)
+  windowFocused: true  // false when all Chrome windows lose focus
 };
 
-// Persist tracking state across service worker restarts
+/** Writes tracking state to session storage so it persists across SW restarts. */
 async function saveTrackingState() {
   await chrome.storage.session.set({
     trackingState: {
@@ -63,13 +70,15 @@ async function saveTrackingState() {
   });
 }
 
+/** Restores tracking state from session storage after a SW wake-up. */
 async function loadTrackingState() {
   try {
     const { trackingState } = await chrome.storage.session.get('trackingState');
     if (trackingState) Object.assign(tracking, trackingState);
-  } catch {}
+  } catch {} // session storage may be empty on first run
 }
 
+/** Extracts the hostname from a URL; returns null for non-http(s) pages (e.g. chrome://). */
 function getDomain(url) {
   try {
     const parsed = new URL(url);
@@ -78,7 +87,13 @@ function getDomain(url) {
   return null;
 }
 
+/**
+ * Commits the elapsed time since startTime to storage for the current domain.
+ * Called on every state transition (tab switch, idle, focus change) and by the
+ * periodic alarm so time isn't lost if the SW gets killed between transitions.
+ */
 async function flushTime() {
+  // Nothing to record when paused, idle, or unfocused — just reset the clock
   if (!tracking.domain || !tracking.startTime || tracking.isIdle || !tracking.windowFocused) {
     tracking.startTime = Date.now();
     await saveTrackingState();
@@ -89,12 +104,13 @@ async function flushTime() {
   const elapsed = Math.round((now - tracking.startTime) / 1000);
   tracking.startTime = now;
 
-  // Sanity check: skip if <= 0 or > 10 min (SW was likely asleep)
+  // Discard impossible values: negative or >10 min means the SW was suspended
   if (elapsed <= 0 || elapsed > 600) {
     await saveTrackingState();
     return;
   }
 
+  // Accumulate seconds into a { "YYYY-MM-DD": { domain: seconds } } structure
   const today = new Date().toISOString().slice(0, 10);
   const { timeTracking = {} } = await chrome.storage.local.get('timeTracking');
   if (!timeTracking[today]) timeTracking[today] = {};
@@ -103,6 +119,7 @@ async function flushTime() {
   await saveTrackingState();
 }
 
+/** Begins a new timing segment for the given tab. */
 async function startTracking(tabId) {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   if (!tab) return;
@@ -112,9 +129,11 @@ async function startTracking(tabId) {
   await saveTrackingState();
 }
 
+/** Flushes any pending time, then re-acquires the active tab to start a fresh segment. */
 async function updateTracking() {
   await flushTime();
 
+  // Don't start a new segment if the user isn't actively browsing
   if (!tracking.windowFocused || tracking.isIdle) {
     tracking.domain = null;
     tracking.startTime = null;
@@ -129,13 +148,17 @@ async function updateTracking() {
 }
 
 // ── Event Listeners ──
+// Each listener reloads state first because the SW may have restarted since
+// the last event, losing the in-memory `tracking` object.
 
+// User switched tabs — flush old domain's time, start timing the new tab
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   await loadTrackingState();
   await flushTime();
   await startTracking(activeInfo.tabId);
 });
 
+// In-page navigation on the active tab — treat as a domain change
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
   await loadTrackingState();
   if (tabId === tracking.tabId && changeInfo.url) {
@@ -146,6 +169,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
   }
 });
 
+// Pause tracking when all Chrome windows lose focus (user switched apps)
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
   await loadTrackingState();
   await flushTime();
@@ -159,6 +183,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
   }
 });
 
+// Pause tracking when user is idle (no keyboard/mouse input)
 chrome.idle.onStateChanged.addListener(async (state) => {
   await loadTrackingState();
   await flushTime();
@@ -172,10 +197,11 @@ chrome.idle.onStateChanged.addListener(async (state) => {
   }
 });
 
-// 60 seconds of no input = idle
+// Fire idle after 60 seconds of no user input
 chrome.idle.setDetectionInterval(60);
 
-// Periodic flush every 30 seconds
+// Alarm-based flush keeps data safe if the SW is killed between tab events.
+// 0.5 min = 30 seconds — the minimum Chrome allows for alarm intervals.
 chrome.alarms.create('flushTime', { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'flushTime') {
@@ -184,7 +210,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
 });
 
-// Initialize on startup/install
+// Bootstrap tracking on browser launch and extension install/update
 chrome.runtime.onStartup.addListener(async () => {
   await loadTrackingState();
   await updateTracking();

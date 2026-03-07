@@ -1,6 +1,17 @@
 /* ── Reset & Base ── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* ── Accessibility: focus outlines for keyboard navigation ── */
+:focus-visible {
+  outline: 2px solid #0a84ff;
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Light theme custom properties */
 :root {
   --bg: #ffffff;
   --bg-secondary: #f5f5f7;
@@ -18,6 +29,7 @@
   --transition: 150ms ease;
 }
 
+/* Auto dark mode: applies unless user explicitly chose light */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #1c1c1e;
@@ -34,6 +46,7 @@
   }
 }
 
+/* Manual dark theme override via data attribute */
 :root[data-theme="dark"] {
   --bg: #1c1c1e;
   --bg-secondary: #2c2c2e;
@@ -48,6 +61,7 @@
   --shadow: 0 2px 12px rgba(0,0,0,0.4);
 }
 
+/* Base typography and full-height layout */
 html, body {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -57,12 +71,14 @@ html, body {
 }
 
 /* ── App Layout ── */
+/* Horizontal flex container: rail (left sidebar) + content (main area) */
 .app {
   display: flex;
   height: 100%;
 }
 
 /* ── Rail ── */
+/* Fixed-width vertical icon bar for space/view navigation */
 .rail {
   width: 44px;
   min-width: 44px;
@@ -99,6 +115,7 @@ html, body {
   border-color: var(--text-secondary);
 }
 
+/* Left-edge pip indicating selected rail item */
 .rail-item.active::before {
   content: '';
   position: absolute;
@@ -118,6 +135,7 @@ html, body {
 
 
 /* ── Content ── */
+/* Scrollable main area that fills remaining width beside the rail */
 .content {
   flex: 1;
   overflow-y: auto;
@@ -137,6 +155,7 @@ html, body {
   padding: 2px 0 4px;
 }
 
+/* Hidden by default, revealed on header hover */
 .space-header-menu {
   width: 24px;
   height: 24px;
@@ -163,6 +182,7 @@ html, body {
 }
 
 /* ── Featured Badges ── */
+/* Grid of small icon tiles pinned at the top of a space */
 .featured-section {
   display: flex;
   flex-wrap: wrap;
@@ -215,6 +235,7 @@ html, body {
   line-height: 1;
 }
 
+/* Dashed placeholder badge for adding a new featured link */
 .featured-add {
   border: 1px dashed var(--border);
   background: transparent;
@@ -224,6 +245,7 @@ html, body {
 }
 
 /* ── Groups ── */
+/* Collapsible link categories within a space */
 .group {
   display: flex;
   flex-direction: column;
@@ -250,6 +272,7 @@ html, body {
   flex-shrink: 0;
 }
 
+/* Chevron rotates to point right when group is collapsed */
 .group.collapsed .group-toggle {
   transform: rotate(-90deg);
 }
@@ -263,6 +286,7 @@ html, body {
   letter-spacing: 0.5px;
 }
 
+/* Hover-revealed action buttons (add, rename, delete) */
 .group-actions {
   display: flex;
   gap: 2px;
@@ -327,6 +351,7 @@ html, body {
 }
 
 /* ── Links ── */
+/* Individual bookmark rows with favicon, title, and URL */
 .link-item {
   display: flex;
   align-items: center;
@@ -367,6 +392,7 @@ html, body {
   text-overflow: ellipsis;
 }
 
+/* URL line hidden by default, shown on hover */
 .link-url {
   font-size: 11px;
   color: var(--text-secondary);
@@ -380,6 +406,7 @@ html, body {
   display: block;
 }
 
+/* Overflow menu button, hidden until link row is hovered */
 .link-overflow {
   width: 22px;
   height: 22px;
@@ -407,10 +434,12 @@ html, body {
 }
 
 /* ── Drag & Drop ── */
+/* Visual feedback for reordering links and rail items */
 .link-item.dragging {
   opacity: 0.4;
 }
 
+/* Blue line drop indicators above/below target */
 .link-item.drag-over-above {
   box-shadow: 0 -2px 0 0 #0a84ff;
 }
@@ -437,6 +466,7 @@ html, body {
 }
 
 /* ── Bottom Actions ── */
+/* Utility links at the bottom of the content area (settings, etc.) */
 .bottom-actions {
   display: flex;
   flex-direction: column;
@@ -466,6 +496,7 @@ html, body {
 }
 
 /* ── Context Menu ── */
+/* Fixed-position dropdown triggered by right-click or overflow button */
 .context-menu {
   position: fixed;
   background: var(--modal-bg);
@@ -495,6 +526,7 @@ html, body {
   background: var(--bg-hover);
 }
 
+/* Destructive actions shown in red */
 .context-menu-item.danger {
   color: #ff453a;
 }
@@ -504,6 +536,7 @@ html, body {
 }
 
 /* ── Modal ── */
+/* Full-screen backdrop + centered dialog for add/edit forms */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -595,6 +628,7 @@ html, body {
 }
 
 /* ── Link Type Toggle ── */
+/* Segmented control in modal for choosing link type (URL, app, terminal) */
 .modal-toggle {
   display: flex;
   gap: 0;
@@ -648,6 +682,7 @@ html, body {
 }
 
 /* ── Emoji Picker ── */
+/* Inline emoji/icon chooser with category tabs, color picker, and grid */
 .emoji-picker {
   display: flex;
   flex-direction: column;
@@ -660,6 +695,7 @@ html, body {
   gap: 8px;
 }
 
+/* Circular color picker; appearance reset needed for cross-browser styling */
 .icon-picker-top input[type="color"] {
   width: 28px;
   height: 28px;
@@ -747,6 +783,7 @@ html, body {
   background: rgba(10, 132, 255, 0.1);
 }
 
+/* Text-based icon input (1-2 letter custom icon) */
 .icon-text-input {
   padding: 8px 0;
 }
@@ -782,6 +819,7 @@ html, body {
 
 /* ── Scrollbar ── */
 /* ── Rail Spacer ── */
+/* Flexible spacer pushing bottom rail items (settings, etc.) to the bottom */
 .rail-spacer {
   flex: 1;
   min-height: 8px;
@@ -791,6 +829,7 @@ html, body {
 }
 
 /* ── Activity View ── */
+/* Daily browsing activity tracker with date navigation and per-site bars */
 .activity-header {
   display: flex;
   align-items: center;
@@ -910,6 +949,7 @@ html, body {
   overflow: hidden;
 }
 
+/* Animated width bar showing relative time spent on a site */
 .activity-bar {
   height: 100%;
   background: #0a84ff;
@@ -918,6 +958,7 @@ html, body {
 }
 
 /* ── Focus Timer ── */
+/* Pomodoro/stopwatch timer with SVG ring, presets, and site tracking */
 .timer-section {
   border-bottom: 1px solid var(--border);
   padding: 12px 0;
@@ -978,10 +1019,12 @@ html, body {
   height: 140px;
 }
 
+/* Smooth SVG arc animation for countdown progress */
 .timer-ring-progress {
   transition: stroke-dashoffset 1s linear;
 }
 
+/* tabular-nums prevents layout shifts as digits change */
 .timer-time {
   font-size: 32px;
   font-weight: 700;
@@ -989,6 +1032,7 @@ html, body {
   text-align: center;
 }
 
+/* Center the time display inside the SVG ring when visible */
 .timer-ring-wrap.has-ring .timer-time {
   position: absolute;
   top: 50%;
@@ -1062,6 +1106,7 @@ html, body {
 }
 
 /* ── Notepad View ── */
+/* Per-space note editor with title, textarea, and voice dictation */
 .notepad-space-label {
   font-size: 13px;
   font-weight: 600;
@@ -1145,12 +1190,14 @@ html, body {
   color: var(--text);
 }
 
+/* Active recording state turns the mic button red */
 .notepad-mic-btn.recording {
   background: rgba(255, 69, 58, 0.1);
   border-color: #ff453a;
   color: #ff453a;
 }
 
+/* Pulsing red dot indicates active voice recording */
 .recording-dot {
   width: 6px;
   height: 6px;
@@ -1168,6 +1215,7 @@ html, body {
 }
 
 /* ── Calendar View ── */
+/* Upcoming events list with colored left stripe per calendar */
 .calendar-list {
   display: flex;
   flex-direction: column;
@@ -1187,10 +1235,12 @@ html, body {
   background: var(--bg-hover);
 }
 
+/* Subtle border highlight for currently-active event */
 .calendar-event.now {
   box-shadow: inset 0 0 0 1px var(--border);
 }
 
+/* Thin colored left border indicating which calendar the event belongs to */
 .calendar-event-stripe {
   width: 4px;
   flex-shrink: 0;
@@ -1249,6 +1299,7 @@ html, body {
 }
 
 /* ── Space Notes List ── */
+/* Browsable list of saved notes with title and metadata preview */
 .space-notes-list {
   display: flex;
   flex-direction: column;
@@ -1292,6 +1343,7 @@ html, body {
 }
 
 /* ── Todo Items ── */
+/* Inline checklist with editable text, checkboxes, and delete on hover */
 .todo-items {
   display: flex;
   flex-direction: column;
@@ -1310,6 +1362,7 @@ html, body {
   color: var(--text-secondary);
 }
 
+/* Animated checkbox: transparent when unchecked, filled blue when checked */
 .todo-checkbox {
   width: 22px;
   height: 22px;
@@ -1397,6 +1450,7 @@ html, body {
 }
 
 /* ── Space Note Actions ── */
+/* Pin/delete buttons on note rows; pinned icon stays visible always */
 .space-note-actions {
   display: flex;
   gap: 2px;
@@ -1447,6 +1501,7 @@ html, body {
 }
 
 /* ── Link Indicators ── */
+/* Small icons showing link metadata (notes, credentials, etc.) */
 .link-indicators {
   display: flex;
   gap: 3px;
@@ -1464,6 +1519,7 @@ html, body {
 }
 
 /* ── Notes Modal ── */
+/* Textarea and validation styles for link-level notes/credentials */
 .modal-field textarea {
   padding: 6px 8px;
   border: 1px solid var(--border);
@@ -1494,6 +1550,7 @@ html, body {
 }
 
 /* ── Credential Row ── */
+/* Username/password fields with copy-to-clipboard button */
 .credential-row {
   display: flex;
   gap: 4px;
@@ -1547,6 +1604,7 @@ html, body {
 }
 
 /* ── Scrollbar ── */
+/* Thin custom scrollbar for content and rail panels (WebKit only) */
 .content::-webkit-scrollbar, .rail::-webkit-scrollbar {
   width: 4px;
 }
@@ -1557,6 +1615,7 @@ html, body {
 }
 
 /* ── Welcome / Onboarding ── */
+/* First-run screen with feature highlights and CTA button */
 .welcome {
   display: flex;
   flex-direction: column;
@@ -1641,6 +1700,7 @@ html, body {
 }
 
 /* ── Export Button ── */
+/* Full-width button to export daily activity data */
 .activity-export-btn {
   display: flex;
   align-items: center;
@@ -1664,6 +1724,7 @@ html, body {
 }
 
 /* ── Settings View ── */
+/* Preferences panel with sections, toggles, theme picker, and about info */
 .settings-view {
   padding: 8px 0;
 }
@@ -1739,7 +1800,7 @@ html, body {
   margin-top: 2px;
 }
 
-/* Toggle switch */
+/* Toggle switch — iOS-style slider built with checkbox + pseudo-element */
 .settings-toggle {
   position: relative;
   width: 36px;
@@ -1774,6 +1835,7 @@ html, body {
   transition: transform 200ms;
 }
 
+/* Checked state: blue track, knob slides right */
 .settings-toggle input:checked + .settings-slider {
   background: #0a84ff;
 }
@@ -1782,7 +1844,7 @@ html, body {
   transform: translateX(16px);
 }
 
-/* Theme buttons */
+/* Theme buttons — light / dark / auto selector row */
 .settings-theme-row {
   display: flex;
   gap: 6px;
@@ -1815,7 +1877,7 @@ html, body {
   background: rgba(10, 132, 255, 0.08);
 }
 
-/* Shortcuts */
+/* Shortcuts — keyboard shortcut display rows with <kbd> badges */
 .settings-shortcut {
   display: flex;
   align-items: center;
@@ -1833,6 +1895,7 @@ html, body {
   margin-bottom: 6px;
 }
 
+/* Collapsible help/info panel with chevron toggle */
 .settings-help-bubble {
   margin: 12px 0;
   border: 1px solid var(--border);
@@ -1902,6 +1965,7 @@ html, body {
   border: 1px solid var(--border);
 }
 
+/* Registered app list with delete buttons and add form */
 .settings-apps-list {
   margin: 8px 0;
 }
@@ -2000,7 +2064,7 @@ html, body {
   color: var(--text);
 }
 
-/* Action buttons */
+/* Action buttons — full-width settings actions (import/export/reset) */
 .settings-action-btn {
   display: block;
   width: 100%;
@@ -2020,6 +2084,7 @@ html, body {
   background: var(--bg-hover);
 }
 
+/* Prominent blue-outlined sync button with disabled state */
 .settings-sync-btn {
   display: flex;
   align-items: center;
@@ -2053,6 +2118,7 @@ html, body {
   margin-top: 6px;
 }
 
+/* About footer: version, author link, and description */
 .settings-about {
   text-align: center;
   padding: 16px 0 8px;

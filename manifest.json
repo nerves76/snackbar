@@ -6,7 +6,6 @@
   "permissions": [
     "sidePanel",
     "storage",
-    "activeTab",
     "tabs",
     "idle",
     "alarms",

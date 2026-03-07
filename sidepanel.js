@@ -1,11 +1,18 @@
 // ── Helpers ──
 
+/** Generates a unique ID with the given prefix using base-36 timestamp + random suffix. */
 function generateId(prefix) {
   return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
 // ── Lucide Icons ──
 
+/**
+ * Creates an inline SVG element for a named Lucide icon.
+ * @param {string} name - Key into LUCIDE_ICONS path data map.
+ * @param {number} size - Width and height in pixels.
+ * @param {string} [color] - Stroke color; defaults to currentColor.
+ */
 function createLucideIcon(name, size, color) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', size);
@@ -119,6 +126,7 @@ const LUCIDE_ICONS = {
   "zap": `<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />`,
 };
 
+// Groups icons into categories for the space icon picker modal
 const ICON_CATEGORIES = {
   'Work': ['briefcase', 'building-2', 'calendar', 'clock', 'mail', 'phone', 'users', 'user', 'presentation', 'newspaper', 'graduation-cap', 'map-pin'],
   'Dev': ['code', 'terminal', 'database', 'server', 'git-branch', 'bug', 'cpu', 'globe', 'wifi', 'zap', 'rocket', 'eye'],
@@ -129,17 +137,21 @@ const ICON_CATEGORIES = {
   'Objects': ['home', 'shopping-cart', 'coffee', 'gift', 'wrench', 'settings', 'plane', 'car'],
 };
 
+/** Checks if the URL uses the terminal:// custom protocol. */
 function isTerminalUrl(url) {
   return /^terminal:\/\//i.test(url.trim());
 }
 
+/** Prepends https:// if no protocol scheme is present. Leaves custom schemes intact. */
 function normalizeUrl(url) {
   url = url.trim();
+  // Already has a scheme (http, https, custom, etc.)
   if (/^[a-zA-Z][\w+.-]*:\/\//i.test(url)) return url;
   if (url) url = 'https://' + url;
   return url;
 }
 
+/** Extracts a display letter from a URL (e.g. hostname initial) for fallback favicons. */
 function letterFromUrl(url) {
   if (isTerminalUrl(url)) return '>_';
   if (isCustomScheme(url)) {
@@ -152,12 +164,14 @@ function letterFromUrl(url) {
   }
 }
 
+/** Derives a deterministic HSL color from a string via a simple hash (djb2-like). */
 function colorFromString(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
   return `hsl(${Math.abs(h) % 360}, 55%, 55%)`;
 }
 
+/** Returns a Google favicon service URL for the domain, or null for custom schemes. */
 function faviconUrl(url) {
   if (isCustomScheme(url)) return null;
   try {
@@ -168,6 +182,10 @@ function faviconUrl(url) {
   }
 }
 
+/**
+ * Creates a favicon element for a URL. Falls back to a colored letter on image load error.
+ * Handles terminal://, custom schemes, and standard http(s) URLs differently.
+ */
 function createFaviconEl(url, size) {
   const wrapper = document.createElement('div');
   if (isTerminalUrl(url)) {
@@ -219,38 +237,41 @@ const DEFAULT_STATE = {
 
 // ── State ──
 
-let currentView = 'spaces'; // 'spaces', 'activity', 'notepad', 'calendar', or 'settings'
+let currentView = 'spaces'; // which panel is shown in the content area
 
-// Feature toggles (defaults)
+// Feature toggles (persisted to storage; control rail icon visibility)
 let features = {
   activity: true,
   notepad: true,
   calendar: true,
   focusTimer: true
 };
+// Config for opening links in editors/terminals via custom URL schemes
 let appLinksConfig = {
   enabled: false,
   basePath: '',
   apps: []
 };
-let activityDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+// Currently viewed date on each date-navigable panel
+let activityDate = new Date().toISOString().slice(0, 10);
 let notepadDate = new Date().toISOString().slice(0, 10);
 let calendarDate = new Date().toISOString().slice(0, 10);
 let activityRefreshTimer = null;
 
-// Focus timer state
+// Focus timer state — persisted in session storage so it survives sidebar reopens
 let focusTimer = {
   running: false,
   startTime: null,
-  durationSeconds: null, // null = stopwatch mode, number = countdown mode
+  durationSeconds: null, // null = stopwatch (count up), number = countdown
   elapsed: 0,
-  sites: {},  // domain -> seconds during this session
+  sites: {},  // domain -> seconds tracked during this session
   intervalId: null,
-  finished: false
+  finished: false       // true once countdown reaches zero
 };
 
-let state = null;
+let state = null; // root app state: { spaces[], activeSpaceId }
 
+/** Loads spaces and active workspace from chrome.storage.local. Initializes defaults if empty. */
 async function loadState() {
   const data = await chrome.storage.local.get(['spaces', 'activeSpaceId']);
   if (!data.spaces || data.spaces.length === 0) {
@@ -265,10 +286,12 @@ async function loadState() {
   }
 }
 
+/** Persists current spaces and active workspace ID to chrome.storage.local. */
 async function saveState() {
   await chrome.storage.local.set({ spaces: state.spaces, activeSpaceId: state.activeSpaceId });
 }
 
+/** Returns the space object matching the current activeSpaceId, or undefined. */
 function getActiveSpace() {
   return state.spaces.find(s => s.id === state.activeSpaceId);
 }
@@ -277,6 +300,7 @@ function getActiveSpace() {
 
 let currentTheme = 'system'; // 'system', 'light', 'dark'
 
+/** Notifies the background script of the current effective theme so the toolbar icon can match. */
 function notifyIconTheme() {
   const systemDark = matchMedia('(prefers-color-scheme: dark)').matches;
   const isDark = currentTheme === 'dark' ||
@@ -285,6 +309,7 @@ function notifyIconTheme() {
   chrome.runtime.sendMessage({ type: 'themeChanged', isDark });
 }
 
+/** Reads persisted theme preference and applies it to the document root. */
 async function applyTheme() {
   const { theme } = await chrome.storage.local.get('theme');
   currentTheme = theme || 'system';
@@ -292,6 +317,7 @@ async function applyTheme() {
   notifyIconTheme();
 }
 
+/** Cycles through system -> light -> dark and persists the choice. */
 async function cycleTheme() {
   const order = ['system', 'light', 'dark'];
   const idx = order.indexOf(currentTheme);
@@ -301,8 +327,10 @@ async function cycleTheme() {
   notifyIconTheme();
 }
 
+// Re-evaluate icon theme when OS dark mode changes
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => notifyIconTheme());
 
+/** Loads feature toggles and app-links config from storage, merging with defaults. */
 async function loadFeatures() {
   const data = await chrome.storage.local.get(['featureToggles', 'appLinksConfig']);
   if (data.featureToggles) Object.assign(features, data.featureToggles);
@@ -318,10 +346,12 @@ async function saveAppLinksConfig() {
 }
 
 // ── Google Drive Sync ──
+// Uses the appDataFolder scope so the sync file is hidden from the user's Drive.
 
 const SYNC_FILENAME = 'snackbar-sync.json';
 const SYNC_KEYS = ['spaces', 'activeSpaceId', 'notepadPages', 'timeTracking', 'featureToggles', 'theme'];
 
+/** Obtains an OAuth token for Google Drive via chrome.identity (prompts user if needed). */
 async function getDriveToken() {
   try {
     const result = await chrome.identity.getAuthToken({ interactive: true });
@@ -331,6 +361,7 @@ async function getDriveToken() {
   }
 }
 
+/** Searches the appDataFolder for the sync file, returning its id and modifiedTime or null. */
 async function findSyncFile(token) {
   const resp = await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27' + SYNC_FILENAME + '%27&fields=files(id,modifiedTime)', {
     headers: { Authorization: 'Bearer ' + token }
@@ -340,6 +371,7 @@ async function findSyncFile(token) {
   return data.files && data.files.length > 0 ? data.files[0] : null;
 }
 
+/** Downloads and parses the JSON content of a Drive file by ID. */
 async function downloadSyncFile(token, fileId) {
   const resp = await fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
     headers: { Authorization: 'Bearer ' + token }
@@ -348,6 +380,10 @@ async function downloadSyncFile(token, fileId) {
   return resp.json();
 }
 
+/**
+ * Uploads data as JSON to Drive. Updates in place if existingFileId is provided,
+ * otherwise creates a new file in the appDataFolder via multipart upload.
+ */
 async function uploadSyncFile(token, data, existingFileId) {
   const content = JSON.stringify(data);
   if (existingFileId) {
@@ -373,6 +409,11 @@ async function uploadSyncFile(token, data, existingFileId) {
   }
 }
 
+/**
+ * Performs a last-write-wins sync with Google Drive.
+ * Compares remote vs local timestamps: pulls if remote is newer, pushes otherwise.
+ * @returns {'pulled'|'pushed'} which direction the sync went.
+ */
 async function syncToCloud() {
   const token = await getDriveToken();
   const localData = await chrome.storage.local.get(SYNC_KEYS);
@@ -411,10 +452,15 @@ async function syncToCloud() {
 
 // ── Navigation ──
 
+/** Returns true for non-http(s) schemes like vscode://, cursor://, terminal://, etc. */
 function isCustomScheme(url) {
   return /^[a-zA-Z][\w+.-]*:\/\//i.test(url) && !/^https?:\/\//i.test(url);
 }
 
+/**
+ * Opens a link. Custom schemes open in a new window (OS handles them);
+ * standard URLs navigate the current active tab.
+ */
 async function openLink(url) {
   url = normalizeUrl(url);
   if (isCustomScheme(url)) {
@@ -425,6 +471,7 @@ async function openLink(url) {
   if (tab) chrome.tabs.update(tab.id, { url });
 }
 
+/** Opens every link in a group, each in a new background tab. */
 function openAllInGroup(group) {
   group.links.forEach(link => {
     const url = normalizeUrl(link.url);
@@ -443,6 +490,15 @@ const $content = document.getElementById('content');
 const $modalOverlay = document.getElementById('modalOverlay');
 const $modal = document.getElementById('modal');
 
+// A11y: allow Enter/Space to activate any element with role="button"
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute('role') === 'button') {
+    e.preventDefault();
+    e.target.click();
+  }
+});
+
+/** Top-level render dispatcher. Rebuilds the rail and the content area based on currentView. */
 function render() {
   renderRail();
   if (currentView === 'settings') {
@@ -463,8 +519,11 @@ function render() {
   }
 }
 
+/** Builds the vertical sidebar rail: workspace icons, add button, feature toggles, settings. */
 function renderRail() {
   $rail.innerHTML = '';
+  $rail.setAttribute('role', 'navigation');
+  $rail.setAttribute('aria-label', 'Sidebar navigation');
 
   state.spaces.forEach(space => {
     const item = document.createElement('div');
@@ -480,6 +539,9 @@ function renderRail() {
       item.style.fontWeight = '700';
     }
     item.title = space.name;
+    item.setAttribute('role', 'button');
+    item.setAttribute('aria-label', space.name);
+    item.tabIndex = 0;
     if (space.color) item.style.borderColor = space.id === state.activeSpaceId ? space.color : 'transparent';
     if (space.color && space.id === state.activeSpaceId) {
       item.style.setProperty('--accent', space.color);
@@ -493,6 +555,7 @@ function renderRail() {
         { label: 'Delete Space', danger: true, action: () => deleteSpace(space.id) }
       ]);
     });
+    // ── Rail drag-and-drop: reorder workspaces ──
     item.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('text/plain', space.id);
       e.dataTransfer.effectAllowed = 'move';
@@ -510,6 +573,7 @@ function renderRail() {
       $rail.querySelectorAll('.rail-drag-above, .rail-drag-below').forEach(el => {
         el.classList.remove('rail-drag-above', 'rail-drag-below');
       });
+      // Show indicator above or below depending on cursor position relative to midpoint
       const rect = item.getBoundingClientRect();
       const mid = rect.top + rect.height / 2;
       item.classList.add(e.clientY < mid ? 'rail-drag-above' : 'rail-drag-below');
@@ -526,6 +590,7 @@ function renderRail() {
       const [moved] = state.spaces.splice(fromIdx, 1);
       let toIdx = state.spaces.findIndex(s => s.id === space.id);
       const rect = item.getBoundingClientRect();
+      // Insert after if cursor is in the bottom half of the drop target
       if (e.clientY >= rect.top + rect.height / 2) toIdx++;
       state.spaces.splice(toIdx, 0, moved);
       saveState();
@@ -539,6 +604,9 @@ function renderRail() {
   addBtn.className = 'rail-item rail-add';
   addBtn.textContent = '+';
   addBtn.title = 'Add Space';
+  addBtn.setAttribute('role', 'button');
+  addBtn.setAttribute('aria-label', 'Add Space');
+  addBtn.tabIndex = 0;
   addBtn.addEventListener('click', () => showSpaceModal(null));
   $rail.appendChild(addBtn);
 
@@ -552,6 +620,9 @@ function renderRail() {
     activityBtn.className = 'rail-item' + (currentView === 'activity' ? ' active' : '');
     activityBtn.appendChild(createLucideIcon('clock', 18));
     activityBtn.title = 'Activity (T)';
+    activityBtn.setAttribute('role', 'button');
+    activityBtn.setAttribute('aria-label', 'Activity');
+    activityBtn.tabIndex = 0;
     activityBtn.addEventListener('click', () => {
       currentView = currentView === 'activity' ? 'spaces' : 'activity';
       if (currentView === 'activity') activityDate = new Date().toISOString().slice(0, 10);
@@ -565,6 +636,9 @@ function renderRail() {
     notepadBtn.className = 'rail-item' + (currentView === 'notepad' ? ' active' : '');
     notepadBtn.appendChild(createLucideIcon('file-text', 18));
     notepadBtn.title = 'Notepad (N)';
+    notepadBtn.setAttribute('role', 'button');
+    notepadBtn.setAttribute('aria-label', 'Notepad');
+    notepadBtn.tabIndex = 0;
     notepadBtn.addEventListener('click', () => {
       currentView = currentView === 'notepad' ? 'spaces' : 'notepad';
       if (currentView === 'notepad') notepadDate = new Date().toISOString().slice(0, 10);
@@ -578,6 +652,9 @@ function renderRail() {
     calendarBtn.className = 'rail-item' + (currentView === 'calendar' ? ' active' : '');
     calendarBtn.appendChild(createLucideIcon('calendar', 18));
     calendarBtn.title = 'Calendar (C)';
+    calendarBtn.setAttribute('role', 'button');
+    calendarBtn.setAttribute('aria-label', 'Calendar');
+    calendarBtn.tabIndex = 0;
     calendarBtn.addEventListener('click', () => {
       currentView = currentView === 'calendar' ? 'spaces' : 'calendar';
       if (currentView === 'calendar') calendarDate = new Date().toISOString().slice(0, 10);
@@ -590,6 +667,9 @@ function renderRail() {
   settingsBtn.className = 'rail-item' + (currentView === 'settings' ? ' active' : '');
   settingsBtn.appendChild(createLucideIcon('settings', 18));
   settingsBtn.title = 'Settings';
+  settingsBtn.setAttribute('role', 'button');
+  settingsBtn.setAttribute('aria-label', 'Settings');
+  settingsBtn.tabIndex = 0;
   settingsBtn.addEventListener('click', () => {
     currentView = currentView === 'settings' ? 'spaces' : 'settings';
     render();
@@ -597,6 +677,7 @@ function renderRail() {
   $rail.appendChild(settingsBtn);
 }
 
+/** Renders the onboarding screen shown when no workspaces exist. */
 function renderWelcome() {
   const welcome = document.createElement('div');
   welcome.className = 'welcome';
@@ -640,11 +721,13 @@ function renderWelcome() {
   welcome.querySelector('#welcomeCreate').addEventListener('click', () => showSpaceModal(null));
 }
 
+/** Creates a header row with a back-to-spaces button and a view title label. */
 function createViewTitleRow(label) {
   const row = document.createElement('div');
   row.className = 'settings-title-row';
   const backBtn = document.createElement('button');
   backBtn.className = 'settings-back-btn';
+  backBtn.setAttribute('aria-label', 'Back to spaces');
   backBtn.appendChild(createLucideIcon('arrow-left', 16));
   backBtn.addEventListener('click', () => { currentView = 'spaces'; render(); });
   row.appendChild(backBtn);
@@ -655,6 +738,7 @@ function createViewTitleRow(label) {
   return row;
 }
 
+/** Renders the main workspace view: header, featured badges, link groups, and bottom actions. */
 function renderContent() {
   $content.innerHTML = '';
   const space = getActiveSpace();
@@ -683,7 +767,7 @@ function renderContent() {
   header.appendChild(headerMenu);
   $content.appendChild(header);
 
-  // Featured badges
+  // Featured badges — always shown (the `|| true` ensures section renders even when empty)
   if (space.featured.length > 0 || true) {
     const section = document.createElement('div');
     section.className = 'featured-section';
@@ -699,7 +783,7 @@ function renderContent() {
 
       const label = document.createElement('span');
       label.className = 'badge-label';
-      label.textContent = feat.title.split(/\s+/)[0];
+      label.textContent = feat.title.split(/\s+/)[0]; // show only first word for compactness
       badge.appendChild(label);
 
       badge.addEventListener('click', () => openLink(feat.url));
@@ -851,6 +935,7 @@ function renderContent() {
         el.classList.remove('drag-over-above', 'drag-over-below');
       });
 
+      // Walk visible (non-dragging) link items to find which one the cursor is over
       const linkItems = [...linksEl.querySelectorAll('.link-item:not(.dragging)')];
       let target = null;
       let above = true;
@@ -970,6 +1055,7 @@ function renderContent() {
   $content.appendChild(bottomActions);
 }
 
+/** Creates a draggable link row element with favicon, title, URL, overflow menu, and click-to-open. */
 function createLinkElement(link, groupId) {
   const item = document.createElement('div');
   item.className = 'link-item';
@@ -977,6 +1063,7 @@ function createLinkElement(link, groupId) {
   item.dataset.linkId = link.id;
   item.dataset.groupId = groupId;
 
+  // Drag data includes source groupId so drop handler knows if it's cross-group
   item.addEventListener('dragstart', (e) => {
     e.dataTransfer.setData('text/plain', JSON.stringify({ linkId: link.id, groupId }));
     e.dataTransfer.effectAllowed = 'move';
@@ -1041,6 +1128,7 @@ function createLinkElement(link, groupId) {
 
 // ── Settings View ──
 
+/** Renders the full settings page: feature toggles, app links, theme, shortcuts, sync, and data. */
 function renderSettingsView() {
   $content.innerHTML = '';
 
@@ -1184,7 +1272,7 @@ function renderSettingsView() {
     baseField.innerHTML = `
       <label class="settings-row-label">Base path</label>
       <div class="settings-row-desc" style="margin-bottom:6px">For path-based apps (editors, terminals), folder paths will be relative to this.</div>
-      <input type="text" class="settings-terminal-input" value="${appLinksConfig.basePath}" placeholder="/Users/you/projects/">
+      <input type="text" class="settings-terminal-input" value="${escapeHtml(appLinksConfig.basePath)}" placeholder="/Users/you/projects/">
     `;
     baseField.querySelector('input').addEventListener('change', async (e) => {
       let val = e.target.value.trim();
@@ -1213,7 +1301,16 @@ function renderSettingsView() {
     appLinksConfig.apps.forEach((app, i) => {
       const row = document.createElement('div');
       row.className = 'settings-app-row';
-      row.innerHTML = `<div><span class="settings-app-name">${app.name}</span><div class="settings-row-desc">${app.scheme}${app.usesBasePath ? '{base}/' : ''}{path}</div></div>`;
+      const rowInfo = document.createElement('div');
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'settings-app-name';
+      nameSpan.textContent = app.name;
+      rowInfo.appendChild(nameSpan);
+      const schemeDesc = document.createElement('div');
+      schemeDesc.className = 'settings-row-desc';
+      schemeDesc.textContent = app.scheme + (app.usesBasePath ? '{base}/' : '') + '{path}';
+      rowInfo.appendChild(schemeDesc);
+      row.appendChild(rowInfo);
       const delBtn = document.createElement('button');
       delBtn.className = 'settings-app-delete';
       delBtn.appendChild(createLucideIcon('x', 12));
@@ -1449,6 +1546,7 @@ function renderSettingsView() {
 
 // ── Activity View ──
 
+/** Formats seconds into a human-readable duration string (e.g. "1h 23m" or "45s"). */
 function formatDuration(seconds) {
   if (seconds < 60) return seconds + 's';
   const h = Math.floor(seconds / 3600);
@@ -1457,17 +1555,20 @@ function formatDuration(seconds) {
   return m + 'm';
 }
 
+/** Returns "Today", "Yesterday", or a short date label for the given YYYY-MM-DD string. */
 function formatDateLabel(dateStr) {
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   if (dateStr === today) return 'Today';
   if (dateStr === yesterday) return 'Yesterday';
+  // T12:00:00 avoids timezone-related off-by-one issues
   const d = new Date(dateStr + 'T12:00:00');
   return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 // ── Focus Timer ──
 
+/** Formats seconds as M:SS or H:MM:SS for the focus timer display. */
 function formatTimerDisplay(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -1476,6 +1577,10 @@ function formatTimerDisplay(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/**
+ * Starts the focus timer. Pass a duration for countdown mode, or null for open-ended stopwatch.
+ * Resets all tracked site time.
+ */
 function startFocusTimer(durationSeconds) {
   focusTimer.running = true;
   focusTimer.startTime = Date.now();
@@ -1487,6 +1592,7 @@ function startFocusTimer(durationSeconds) {
   startTimerTick();
 }
 
+/** Pauses the focus timer but preserves elapsed time and site data for possible resume. */
 function stopFocusTimer() {
   focusTimer.running = false;
   clearInterval(focusTimer.intervalId);
@@ -1494,6 +1600,7 @@ function stopFocusTimer() {
   saveFocusTimerState();
 }
 
+/** Fully resets the timer state, clearing all elapsed time and site tracking data. */
 function resetFocusTimer() {
   focusTimer.running = false;
   focusTimer.startTime = null;
@@ -1506,13 +1613,15 @@ function resetFocusTimer() {
   saveFocusTimerState();
 }
 
+/** Starts the 1-second interval that updates elapsed time, tracks the active site, and checks countdown completion. */
 function startTimerTick() {
   clearInterval(focusTimer.intervalId);
   focusTimer.intervalId = setInterval(() => {
     if (!focusTimer.running) return;
+    // Derive elapsed from wall-clock difference so it stays accurate across sleeps
     focusTimer.elapsed = Math.round((Date.now() - focusTimer.startTime) / 1000);
 
-    // Track current site
+    // Track which site the user is on each second
     chrome.tabs.query({ active: true, lastFocusedWindow: true }).then(([tab]) => {
       if (tab && tab.url) {
         try {
@@ -1535,8 +1644,8 @@ function startTimerTick() {
   }, 1000);
 }
 
+/** Plays 3 short 880Hz beeps via Web Audio API when the countdown timer finishes. */
 function playTimerAlert() {
-  // Generate a pleasant beep using AudioContext
   try {
     const ctx = new AudioContext();
     for (let i = 0; i < 3; i++) {
@@ -1554,6 +1663,7 @@ function playTimerAlert() {
   } catch {}
 }
 
+/** Updates the timer's time text, SVG ring progress, and site list without a full re-render. */
 function updateTimerDisplay() {
   const timeEl = document.querySelector('.timer-time');
   const ringEl = document.querySelector('.timer-ring-progress');
@@ -1571,7 +1681,7 @@ function updateTimerDisplay() {
 
   if (ringEl && duration) {
     const progress = Math.min(elapsed / duration, 1);
-    const circumference = 2 * Math.PI * 54;
+    const circumference = 2 * Math.PI * 54; // matches the SVG circle r=54
     ringEl.style.strokeDashoffset = circumference * (1 - progress);
   }
 
@@ -1580,6 +1690,7 @@ function updateTimerDisplay() {
   if (sitesList) renderTimerSites(sitesList);
 }
 
+/** Renders the sorted list of domains visited during the current focus session, with time bars. */
 function renderTimerSites(container) {
   const entries = Object.entries(focusTimer.sites).sort((a, b) => b[1] - a[1]);
   if (entries.length === 0) {
@@ -1619,6 +1730,7 @@ function renderTimerSites(container) {
   });
 }
 
+/** Persists timer state to session storage so it survives sidebar close/reopen within the session. */
 async function saveFocusTimerState() {
   await chrome.storage.session.set({
     focusTimerState: {
@@ -1631,6 +1743,7 @@ async function saveFocusTimerState() {
   });
 }
 
+/** Restores a running timer from session storage and resumes the tick interval if needed. */
 async function loadFocusTimerState() {
   try {
     const { focusTimerState } = await chrome.storage.session.get('focusTimerState');
@@ -1646,6 +1759,7 @@ async function loadFocusTimerState() {
   } catch {}
 }
 
+/** Builds the focus timer UI: preset buttons when idle, or ring + controls + sites when active. */
 function renderTimerSection() {
   const section = document.createElement('div');
   section.className = 'timer-section';
@@ -1761,6 +1875,7 @@ function renderTimerSection() {
       resumeBtn.appendChild(resumeLabel);
       resumeBtn.addEventListener('click', () => {
         focusTimer.running = true;
+        // Adjust startTime backward by already-elapsed time so the timer continues seamlessly
         focusTimer.startTime = Date.now() - focusTimer.elapsed * 1000;
         saveFocusTimerState();
         startTimerTick();
@@ -1800,6 +1915,7 @@ function renderTimerSection() {
   return section;
 }
 
+/** Renders the activity tracker view: date nav, focus timer (today only), and per-domain time bars. */
 async function renderActivityView() {
   $content.innerHTML = '';
 
@@ -1811,6 +1927,7 @@ async function renderActivityView() {
 
   const prevBtn = document.createElement('button');
   prevBtn.className = 'activity-nav-btn';
+  prevBtn.setAttribute('aria-label', 'Previous day');
   prevBtn.appendChild(createLucideIcon('chevron-left', 16));
   prevBtn.addEventListener('click', () => {
     const d = new Date(activityDate + 'T12:00:00');
@@ -1836,6 +1953,7 @@ async function renderActivityView() {
   const today = new Date().toISOString().slice(0, 10);
   const nextBtn = document.createElement('button');
   nextBtn.className = 'activity-nav-btn';
+  nextBtn.setAttribute('aria-label', 'Next day');
   nextBtn.appendChild(createLucideIcon('chevron-right', 16));
   if (activityDate >= today) {
     nextBtn.disabled = true;
@@ -1913,7 +2031,7 @@ async function renderActivityView() {
     barBg.className = 'activity-bar-bg';
     const bar = document.createElement('div');
     bar.className = 'activity-bar';
-    bar.style.width = Math.max((seconds / maxTime) * 100, 2) + '%';
+    bar.style.width = Math.max((seconds / maxTime) * 100, 2) + '%'; // min 2% so short bars are visible
     barBg.appendChild(bar);
     info.appendChild(barBg);
 
@@ -1949,13 +2067,14 @@ async function renderActivityView() {
 
 // ── Notepad View ──
 
-let notepadSaveTimer = null;
-let recognition = null;
+let notepadSaveTimer = null;   // debounce timer for auto-saving notepad content
+let recognition = null;        // SpeechRecognition instance (Web Speech API)
 let isTranscribing = false;
-let notepadMode = 'daily'; // 'daily', 'notes', or 'todos'
-let activeSpaceNoteId = null; // which space note is being edited
-let activeSpaceTodoId = null; // which todo list is being edited
+let notepadMode = 'daily';     // 'daily' = date-based notes, 'notes' = workspace notes, 'todos' = workspace todo lists
+let activeSpaceNoteId = null;  // ID of the space note currently open in the editor
+let activeSpaceTodoId = null;  // ID of the todo list currently open in the editor
 
+/** Renders the notepad view with Daily/Notes/Todos tab toggle, then delegates to the active mode. */
 async function renderNotepadView() {
   $content.innerHTML = '';
 
@@ -2007,6 +2126,7 @@ async function renderNotepadView() {
   await renderDailyNotepad();
 }
 
+/** Renders the daily notepad: date navigation, mic transcription toolbar, title, and textarea. */
 async function renderDailyNotepad() {
   // Stop transcription if navigating away from today
   const today = new Date().toISOString().slice(0, 10);
@@ -2018,6 +2138,7 @@ async function renderDailyNotepad() {
 
   const prevBtn = document.createElement('button');
   prevBtn.className = 'activity-nav-btn';
+  prevBtn.setAttribute('aria-label', 'Previous day');
   prevBtn.appendChild(createLucideIcon('chevron-left', 16));
   prevBtn.addEventListener('click', async () => {
     await flushNotepad();
@@ -2043,6 +2164,7 @@ async function renderDailyNotepad() {
 
   const nextBtn = document.createElement('button');
   nextBtn.className = 'activity-nav-btn';
+  nextBtn.setAttribute('aria-label', 'Next day');
   nextBtn.appendChild(createLucideIcon('chevron-right', 16));
   if (notepadDate >= today) {
     nextBtn.disabled = true;
@@ -2097,7 +2219,7 @@ async function renderDailyNotepad() {
   // Load note for this date
   const { notepadPages = {} } = await chrome.storage.local.get('notepadPages');
   let page = notepadPages[notepadDate] || { title: '', content: '' };
-  // Migrate old string format
+  // Migrate: older versions stored the page as a plain string instead of {title, content}
   if (typeof page === 'string') page = { title: '', content: page };
 
   // Title field
@@ -2122,6 +2244,7 @@ async function renderDailyNotepad() {
   textarea.value = page.content;
   textarea.spellcheck = true;
 
+  // Debounced auto-save on every keystroke (500ms idle)
   textarea.addEventListener('input', () => {
     clearTimeout(notepadSaveTimer);
     status.textContent = '';
@@ -2142,6 +2265,7 @@ async function renderDailyNotepad() {
 
 // ── Space Notes ──
 
+/** Renders the workspace notes list, or the note editor if a specific note is selected. */
 function renderSpaceNotes() {
   const space = getActiveSpace();
   if (!space) return;
@@ -2240,12 +2364,14 @@ function renderSpaceNotes() {
   $content.appendChild(list);
 }
 
+/** Renders a single workspace note editor with title input, textarea, and auto-save. */
 function renderSpaceNoteEditor(note) {
   // Back button
   const backRow = document.createElement('div');
   backRow.className = 'notepad-toolbar';
   const backBtn = document.createElement('button');
   backBtn.className = 'activity-nav-btn';
+  backBtn.setAttribute('aria-label', 'Back');
   backBtn.appendChild(createLucideIcon('chevron-left', 16));
   backBtn.addEventListener('click', async () => {
     await flushSpaceNote(note);
@@ -2296,6 +2422,7 @@ function renderSpaceNoteEditor(note) {
   $content.appendChild(textarea);
 }
 
+/** Immediately saves the current note editor contents, cancelling any pending debounce timer. */
 async function flushSpaceNote(note) {
   clearTimeout(notepadSaveTimer);
   const titleInput = $content.querySelector('.notepad-title');
@@ -2308,6 +2435,7 @@ async function flushSpaceNote(note) {
 
 // ── Space Todos ──
 
+/** Renders the workspace todo list index, or the todo editor if a specific list is selected. */
 function renderSpaceTodos() {
   const space = getActiveSpace();
   if (!space) return;
@@ -2402,12 +2530,14 @@ function renderSpaceTodos() {
   $content.appendChild(list);
 }
 
+/** Renders the interactive todo list editor: checkboxes, inline text editing, Enter to add, Backspace to remove. */
 function renderTodoEditor(todo) {
   // Back button + title
   const backRow = document.createElement('div');
   backRow.className = 'notepad-toolbar';
   const backBtn = document.createElement('button');
   backBtn.className = 'activity-nav-btn';
+  backBtn.setAttribute('aria-label', 'Back');
   backBtn.appendChild(createLucideIcon('chevron-left', 16));
   backBtn.addEventListener('click', () => { activeSpaceTodoId = null; renderNotepadView(); });
   backRow.appendChild(backBtn);
@@ -2461,13 +2591,13 @@ function renderTodoEditor(todo) {
       });
       text.addEventListener('keydown', async (e) => {
         if (e.key === 'Enter') {
+          // Insert a new empty item right after this one
           e.preventDefault();
           const idx = todo.items.indexOf(item);
           const newItem = { id: generateId('ti'), text: '', done: false };
           todo.items.splice(idx + 1, 0, newItem);
           await saveState();
           renderItems();
-          // Focus the new item
           const inputs = itemsList.querySelectorAll('.todo-text');
           if (inputs[idx + 1]) inputs[idx + 1].focus();
         }
@@ -2520,6 +2650,7 @@ function renderTodoEditor(todo) {
 
 // ── Daily Notepad Save ──
 
+/** Saves a daily notepad page. Removes the entry entirely if both title and content are empty. */
 async function saveNotepadContent(title, text) {
   const { notepadPages = {} } = await chrome.storage.local.get('notepadPages');
   if (title.trim() || text.trim()) {
@@ -2530,6 +2661,7 @@ async function saveNotepadContent(title, text) {
   await chrome.storage.local.set({ notepadPages });
 }
 
+/** Immediately persists the daily notepad, used before navigating away to prevent data loss. */
 async function flushNotepad() {
   clearTimeout(notepadSaveTimer);
   const textarea = $content.querySelector('.notepad-textarea');
@@ -2540,14 +2672,19 @@ async function flushNotepad() {
 
 // ── Speech-to-Text ──
 
-let activeTextarea = null;
-let activeStatus = null;
+let activeTextarea = null; // textarea receiving transcription output
+let activeStatus = null;   // status label element for transcription state
 
+/** Re-attaches an already-running SpeechRecognition to a (re-rendered) textarea. */
 function attachRecognitionToTextarea(textarea, status) {
   activeTextarea = textarea;
   activeStatus = status;
 }
 
+/**
+ * Starts continuous speech-to-text transcription using the Web Speech API.
+ * Final results are appended as timestamped lines and auto-saved.
+ */
 function startTranscription(textarea, status) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
@@ -2589,7 +2726,7 @@ function startTranscription(textarea, status) {
   };
 
   recognition.onend = () => {
-    // SpeechRecognition stops after silence; restart if still transcribing
+    // Browser stops recognition after periods of silence; auto-restart to keep it going
     if (isTranscribing) {
       try { recognition.start(); } catch {}
     }
@@ -2598,6 +2735,7 @@ function startTranscription(textarea, status) {
   recognition.start();
 }
 
+/** Stops speech recognition and clears the active textarea/status references. */
 function stopTranscription() {
   isTranscribing = false;
   if (recognition) {
@@ -2610,6 +2748,7 @@ function stopTranscription() {
 
 // ── Calendar View ──
 
+/** Obtains an OAuth token for Google Calendar via chrome.identity. */
 async function getCalendarToken() {
   try {
     const result = await chrome.identity.getAuthToken({ interactive: true });
@@ -2620,8 +2759,12 @@ async function getCalendarToken() {
   }
 }
 
-let calendarTokenRetried = false;
+let calendarTokenRetried = false; // prevents infinite retry loop on 401
 
+/**
+ * Fetches calendar events for a given date from Google Calendar API.
+ * Automatically retries once on 401 by clearing the cached auth token.
+ */
 async function fetchCalendarEvents(date) {
   const token = await getCalendarToken();
   if (!token) throw new Error('No auth token received. Make sure you approved the Google sign-in prompt.');
@@ -2656,12 +2799,14 @@ async function fetchCalendarEvents(date) {
   return data.items || [];
 }
 
+/** Formats an event's start-end time range, or returns "All day" for dateless events. */
 function formatEventTime(event) {
   if (event.start.date) return 'All day';
   const fmt = (d) => new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   return `${fmt(event.start.dateTime)} – ${fmt(event.end.dateTime)}`;
 }
 
+/** Returns true if the current moment falls within the event's time range. */
 function isEventNow(event) {
   const now = Date.now();
   if (event.start.date) {
@@ -2672,17 +2817,20 @@ function isEventNow(event) {
   return now >= new Date(event.start.dateTime).getTime() && now < new Date(event.end.dateTime).getTime();
 }
 
+// Google Calendar event colorId -> hex mapping (from Calendar API docs)
 const GCAL_COLORS = {
   '1': '#7986cb', '2': '#33b679', '3': '#8e24aa', '4': '#e67c73',
   '5': '#f6bf26', '6': '#f4511e', '7': '#039be5', '8': '#616161',
   '9': '#3f51b5', '10': '#0b8043', '11': '#d50000'
 };
 
+/** Maps a Google Calendar event's colorId to a hex color, defaulting to blue. */
 function getEventColor(event) {
   if (event.colorId && GCAL_COLORS[event.colorId]) return GCAL_COLORS[event.colorId];
   return '#0a84ff';
 }
 
+/** Adds a retry button to an error container that clears cached auth tokens and re-renders. */
 function appendRetryButton(container) {
   const btn = document.createElement('button');
   btn.className = 'modal-btn primary';
@@ -2696,6 +2844,7 @@ function appendRetryButton(container) {
   container.appendChild(btn);
 }
 
+/** Renders the calendar view: date navigation and a list of Google Calendar events for that day. */
 async function renderCalendarView() {
   $content.innerHTML = '';
 
@@ -2707,6 +2856,7 @@ async function renderCalendarView() {
 
   const prevBtn = document.createElement('button');
   prevBtn.className = 'activity-nav-btn';
+  prevBtn.setAttribute('aria-label', 'Previous day');
   prevBtn.appendChild(createLucideIcon('chevron-left', 16));
   prevBtn.addEventListener('click', () => {
     const d = new Date(calendarDate + 'T12:00:00');
@@ -2731,6 +2881,7 @@ async function renderCalendarView() {
 
   const nextBtn = document.createElement('button');
   nextBtn.className = 'activity-nav-btn';
+  nextBtn.setAttribute('aria-label', 'Next day');
   nextBtn.appendChild(createLucideIcon('chevron-right', 16));
   nextBtn.addEventListener('click', () => {
     const d = new Date(calendarDate + 'T12:00:00');
@@ -2769,6 +2920,7 @@ async function renderCalendarView() {
     return;
   }
 
+  // Render all-day events first, then timed events
   const allDay = events.filter(e => e.start.date);
   const timed = events.filter(e => e.start.dateTime);
 
@@ -2781,6 +2933,7 @@ async function renderCalendarView() {
   $content.appendChild(list);
 }
 
+/** Creates a calendar event card with color stripe, time, title, location, and optional meeting link. */
 function createCalendarEventEl(event) {
   const el = document.createElement('div');
   el.className = 'calendar-event' + (isEventNow(event) ? ' now' : '');
@@ -2833,6 +2986,7 @@ function createCalendarEventEl(event) {
 
 // ── Space Operations ──
 
+/** Switches to a workspace by ID, returning to the spaces view if in another panel. */
 function switchSpace(id) {
   currentView = 'spaces';
   state.activeSpaceId = id;
@@ -2840,6 +2994,7 @@ function switchSpace(id) {
   render();
 }
 
+/** Deletes a workspace and falls back to the first remaining space (or none). */
 async function deleteSpace(id) {
   state.spaces = state.spaces.filter(s => s.id !== id);
   if (state.activeSpaceId === id) {
@@ -2851,6 +3006,7 @@ async function deleteSpace(id) {
 
 // ── Group Operations ──
 
+/** Toggles a link group's collapsed state and re-renders. */
 async function toggleGroup(groupId) {
   const space = getActiveSpace();
   const group = space.groups.find(g => g.id === groupId);
@@ -2870,6 +3026,10 @@ async function deleteGroup(groupId) {
 
 // ── Drag & Drop ──
 
+/**
+ * Moves a link between or within groups via drag-and-drop.
+ * Handles index adjustment when reordering within the same group.
+ */
 async function moveLink(srcGroupId, targetGroupId, linkId, insertIndex) {
   const space = getActiveSpace();
   const srcGroup = space.groups.find(g => g.id === srcGroupId);
@@ -2909,6 +3069,10 @@ async function deleteFeatured(featId) {
 
 let activeContextMenu = null;
 
+/**
+ * Shows a positioned context menu with the given action items.
+ * Auto-dismisses on the next click anywhere in the document.
+ */
 function showContextMenu(e, items) {
   closeContextMenu();
   const menu = document.createElement('div');
@@ -2925,12 +3089,13 @@ function showContextMenu(e, items) {
   document.body.appendChild(menu);
   activeContextMenu = menu;
 
-  // Position
+  // Clamp position so the menu doesn't overflow the viewport
   const x = Math.min(e.clientX, window.innerWidth - 140);
   const y = Math.min(e.clientY, window.innerHeight - items.length * 32 - 8);
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
 
+  // Defer the click-to-dismiss listener so the triggering click doesn't immediately close it
   setTimeout(() => document.addEventListener('click', closeContextMenu, { once: true }), 0);
 }
 
@@ -2943,6 +3108,7 @@ function closeContextMenu() {
 
 // ── Modals ──
 
+/** Populates the modal with HTML, shows the overlay, and auto-focuses the first input. */
 function showModal(html) {
   $modal.innerHTML = html;
   $modalOverlay.classList.add('visible');
@@ -2955,12 +3121,18 @@ function closeModal() {
   $modal.innerHTML = '';
 }
 
+// Close modal when clicking the backdrop (but not the modal content itself)
 $modalOverlay.addEventListener('click', (e) => {
   if (e.target === $modalOverlay) closeModal();
 });
 
 // ── Space Modal ──
 
+/**
+ * Shows the add/edit workspace modal with name input, icon picker (Lucide grid or custom text),
+ * color picker, and save/cancel actions.
+ * @param {object|null} existing - Space to edit, or null to create a new one.
+ */
 function showSpaceModal(existing) {
   const isEdit = !!existing;
   const categoryTabs = Object.keys(ICON_CATEGORIES).map(cat =>
@@ -2974,7 +3146,7 @@ function showSpaceModal(existing) {
     <div class="modal-title">${isEdit ? 'Edit' : 'Add'} Space</div>
     <div class="modal-field">
       <label>Name</label>
-      <input type="text" id="mName" value="${isEdit ? existing.name : ''}" placeholder="Space name">
+      <input type="text" id="mName" value="${isEdit ? escapeHtml(existing.name) : ''}" placeholder="Space name">
     </div>
     <div class="modal-field">
       <label>Icon</label>
@@ -3120,13 +3292,17 @@ function showSpaceModal(existing) {
 
 // ── Group Modal ──
 
+/**
+ * Shows the add/edit group modal (name only).
+ * @param {object|null} existing - Group to edit, or null to create a new one.
+ */
 function showGroupModal(existing) {
   const isEdit = !!existing;
   showModal(`
     <div class="modal-title">${isEdit ? 'Edit' : 'Add'} Group</div>
     <div class="modal-field">
       <label>Name</label>
-      <input type="text" id="mGName" value="${isEdit ? existing.name : ''}" placeholder="Group name">
+      <input type="text" id="mGName" value="${isEdit ? escapeHtml(existing.name) : ''}" placeholder="Group name">
     </div>
     <div class="modal-buttons">
       <button class="modal-btn" id="mCancel">Cancel</button>
@@ -3162,12 +3338,19 @@ function showGroupModal(existing) {
 
 // ── Link Modal (Featured & Group) ──
 
+/**
+ * Shows the add/edit link modal. Supports both web URLs and app links (custom schemes).
+ * When app links are configured, provides a Web/App toggle and app selector dropdown.
+ * @param {object|null} existing - Link to edit, or null to create.
+ * @param {'featured'|'group'} type - Whether this is a featured badge or group link.
+ * @param {string} [groupId] - Required when type is 'group'.
+ */
 function showLinkModal(existing, type, groupId) {
   const isEdit = !!existing;
   const isApp = isEdit && isCustomScheme(existing.url);
   const hasApps = appLinksConfig.enabled && appLinksConfig.apps.length > 0;
 
-  // Try to match existing URL to a configured app
+  // Try to match existing URL to a configured app so the form pre-fills correctly
   let matchedAppIndex = -1;
   let existingPath = '';
   if (isApp && hasApps) {
@@ -3194,17 +3377,17 @@ function showLinkModal(existing, type, groupId) {
     </div>` : ''}
     <div class="modal-field">
       <label>Title</label>
-      <input type="text" id="mLTitle" value="${isEdit ? existing.title : ''}" placeholder="Link title">
+      <input type="text" id="mLTitle" value="${isEdit ? escapeHtml(existing.title) : ''}" placeholder="Link title">
     </div>
     <div id="mWebFields" class="modal-field" ${isApp ? 'style="display:none"' : ''}>
       <label>URL</label>
-      <input type="text" id="mLUrl" value="${isEdit && !isApp ? existing.url : ''}" placeholder="https://example.com">
+      <input type="text" id="mLUrl" value="${isEdit && !isApp ? escapeHtml(existing.url) : ''}" placeholder="https://example.com">
     </div>
     ${hasApps ? `<div id="mAppFields" ${!isApp ? 'style="display:none"' : ''}>
       <div class="modal-field">
         <label>App</label>
         <select id="mAppSelect">
-          ${appLinksConfig.apps.map((a, i) => `<option value="${i}" ${i === matchedAppIndex ? 'selected' : ''}>${a.name}</option>`).join('')}
+          ${appLinksConfig.apps.map((a, i) => `<option value="${i}" ${i === matchedAppIndex ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}
         </select>
       </div>
       <div class="modal-field">
@@ -3213,7 +3396,7 @@ function showLinkModal(existing, type, groupId) {
           const a = appLinksConfig.apps[idx];
           return a && a.usesBasePath && appLinksConfig.basePath ? `<span class="terminal-path-hint">${appLinksConfig.basePath}</span>` : '';
         })()}</label>
-        <input type="text" id="mAppPath" value="${existingPath}" placeholder="project/folder">
+        <input type="text" id="mAppPath" value="${escapeHtml(existingPath)}" placeholder="project/folder">
       </div>
     </div>` : ''}
     <div class="modal-buttons">
@@ -3294,12 +3477,14 @@ function showLinkModal(existing, type, groupId) {
 
 // ── Notes Modal ──
 
+/** Escapes HTML entities by leveraging the browser's textContent -> innerHTML conversion. */
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
 }
 
+/** Shows a modal for adding/editing freeform notes and optional login credentials for a link. */
 function showNotesModal(link, type, groupId) {
   showModal(`
     <div class="modal-title">Link Notes — ${escapeHtml(link.title)}</div>
@@ -3351,6 +3536,7 @@ function showNotesModal(link, type, groupId) {
 
 // ── Init ──
 
+/** Entry point: loads persisted data, applies theme, renders UI, and registers keyboard shortcuts. */
 async function init() {
   await loadState();
   await loadFeatures();
@@ -3358,7 +3544,7 @@ async function init() {
   applyTheme();
   render();
 
-  // Keyboard shortcuts (only when sidebar is focused, not in inputs)
+  // Global keyboard shortcuts — ignored when focus is in form fields
   document.addEventListener('keydown', (e) => {
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -3404,6 +3590,7 @@ async function init() {
         }
         break;
       case 'f':
+        // F key: toggle timer — stop if running, start 25min if idle, reset if paused
         if (currentView === 'activity') {
           if (focusTimer.running) { stopFocusTimer(); } else if (focusTimer.elapsed === 0) { startFocusTimer(25 * 60); } else { resetFocusTimer(); }
           renderActivityView();
