@@ -2976,9 +2976,9 @@ async function renderDailyNotepad() {
       });
       toolbar.appendChild(stopBtn);
 
-      const chunkNote = document.createElement('div');
+      const chunkNote = document.createElement('span');
       chunkNote.className = 'recording-chunk-note';
-      chunkNote.textContent = 'Transcribing every 10 min. Click Stop to transcribe remaining.';
+      chunkNote.textContent = 'Transcription happens in 10 minute chunks. Click Stop to transcribe remaining.';
       toolbar.appendChild(chunkNote);
     } else {
       const recBtn = document.createElement('button');
