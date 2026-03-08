@@ -271,8 +271,11 @@ function getEnabledApps() {
 
 // Transcription config — user provides their own API key
 let transcriptionConfig = {
-  provider: 'groq', // 'groq' or 'openai'
-  apiKey: ''
+  provider: 'groq', // 'groq', 'openai', or 'custom'
+  apiKey: '',
+  maxMinutes: 60, // auto-stop after 60 or 120 minutes
+  customUrl: '',   // custom endpoint URL (for 'custom' provider)
+  customModel: ''  // custom model name (for 'custom' provider)
 };
 
 // Currently viewed date on each date-navigable panel
@@ -386,6 +389,57 @@ async function saveAppLinksConfig() {
   await chrome.storage.local.set({ appLinksConfig: { ...appLinksConfig } });
 }
 
+// ── Notes Export Config ──
+
+let notesExportConfig = {
+  googleDrive: false,
+  nextcloud: { enabled: false, url: '', username: '', password: '' }
+};
+
+async function loadNotesExportConfig() {
+  const { notesExportConfig: saved } = await chrome.storage.local.get('notesExportConfig');
+  if (saved) {
+    notesExportConfig.googleDrive = !!saved.googleDrive;
+    if (saved.nextcloud) Object.assign(notesExportConfig.nextcloud, saved.nextcloud);
+  }
+}
+
+async function saveNotesExportConfig() {
+  await chrome.storage.local.set({ notesExportConfig: structuredClone(notesExportConfig) });
+}
+
+/** Builds a filename from date and optional title, sanitized for filesystem safety. */
+function makeNoteFilename(date, title) {
+  const safe = (title || '').trim().replace(/[\/\\:*?"<>|]/g, '-').replace(/\s+/g, ' ').slice(0, 100);
+  return safe ? `${date} ${safe}.txt` : `${date}.txt`;
+}
+
+/** Sanitizes a string for use as a folder name. */
+function safeFolderName(name) {
+  return (name || '').trim().replace(/[\/\\:*?"<>|]/g, '-') || 'Untitled';
+}
+
+/** Builds a map of space id → unique folder name, appending a short suffix for duplicates. */
+function buildSpaceFolderNames(spaces) {
+  const names = {};
+  const counts = {};
+  for (const space of spaces) {
+    const base = safeFolderName(space.name);
+    counts[base] = (counts[base] || 0) + 1;
+  }
+  const seen = {};
+  for (const space of spaces) {
+    const base = safeFolderName(space.name);
+    if (counts[base] > 1) {
+      seen[base] = (seen[base] || 0) + 1;
+      names[space.id] = base + ' (' + seen[base] + ')';
+    } else {
+      names[space.id] = base;
+    }
+  }
+  return names;
+}
+
 // ── Google Drive Sync ──
 // Uses the appDataFolder scope so the sync file is hidden from the user's Drive.
 
@@ -489,6 +543,267 @@ async function syncToCloud() {
     await chrome.storage.local.set({ lastSyncedAt: localData.syncedAt });
     return 'pushed';
   }
+}
+
+// ── Notes Export (Google Drive Files & Nextcloud) ──
+// One-way export: pushes daily notes and workspace notes as .txt files.
+// Folder structure: Snackbar / Daily / {date} {title}.txt
+//                   Snackbar / {Space Name} / {date} {title}.txt
+
+/** Finds a file or folder by exact name within a Drive parent folder. */
+async function findDriveItemByName(token, name, parentId) {
+  const q = "name='" + name.replace(/'/g, "\\'") + "' and '" + parentId + "' in parents and trashed=false";
+  const resp = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&spaces=drive', {
+    headers: { Authorization: 'Bearer ' + token }
+  });
+  if (resp.status === 401 || resp.status === 403) throw new Error('Google Drive authorization failed — try signing out and back in');
+  if (!resp.ok) throw new Error('Drive search failed: ' + resp.status);
+  const data = await resp.json();
+  return data.files && data.files.length > 0 ? data.files[0] : null;
+}
+
+/** Finds or creates a folder by name under a parent in Google Drive. */
+async function ensureDriveExportFolder(token, name, parentId) {
+  const existing = await findDriveItemByName(token, name, parentId);
+  if (existing) return existing.id;
+  const resp = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
+  });
+  if (!resp.ok) throw new Error('Drive folder create failed: ' + resp.status);
+  return (await resp.json()).id;
+}
+
+/**
+ * Creates or updates a .txt file in Google Drive, tracking the file ID
+ * in exportMap so renames are handled (file gets renamed rather than duplicated).
+ */
+async function drivePutFile(token, key, filename, content, folderId, exportMap) {
+  const prev = exportMap[key];
+  if (prev && prev.id) {
+    // Rename if title changed
+    if (prev.name !== filename) {
+      const rr = await fetch('https://www.googleapis.com/drive/v3/files/' + prev.id, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: filename })
+      });
+      if (!rr.ok) { delete exportMap[key]; } // stale ID — fall through to create
+    }
+    if (exportMap[key]) {
+      const ur = await fetch('https://www.googleapis.com/upload/drive/v3/files/' + prev.id + '?uploadType=media', {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'text/plain' },
+        body: content
+      });
+      if (ur.ok) { exportMap[key] = { id: prev.id, name: filename }; return; }
+      delete exportMap[key]; // stale — fall through to create
+    }
+  }
+  // Create new file
+  const metadata = { name: filename, parents: [folderId] };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', new Blob([content], { type: 'text/plain' }));
+  const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token },
+    body: form
+  });
+  if (resp.ok) {
+    const data = await resp.json();
+    exportMap[key] = { id: data.id, name: filename };
+  } else {
+    throw new Error('Failed to create file "' + filename + '": ' + resp.status);
+  }
+}
+
+/** Exports all notes as .txt files to a Snackbar folder in Google Drive. */
+async function exportNotesToDrive() {
+  const token = await getDriveToken();
+  const { noteExportMap = {} } = await chrome.storage.local.get('noteExportMap');
+  if (!noteExportMap.drive) noteExportMap.drive = {};
+  const driveMap = noteExportMap.drive;
+
+  const rootId = await ensureDriveExportFolder(token, 'Snackbar', 'root');
+
+  // Daily notes
+  const { notepadPages = {} } = await chrome.storage.local.get('notepadPages');
+  const dailyEntries = Object.entries(notepadPages).filter(([, page]) => {
+    const p = typeof page === 'string' ? { title: '', content: page } : page;
+    return p.content || p.title;
+  });
+  if (dailyEntries.length > 0) {
+    const dailyId = await ensureDriveExportFolder(token, 'Daily', rootId);
+    for (const [date, page] of dailyEntries) {
+      const p = typeof page === 'string' ? { title: '', content: page } : page;
+      await drivePutFile(token, 'daily:' + date, makeNoteFilename(date, p.title), p.content, dailyId, driveMap);
+    }
+  }
+
+  // Space notes — track folder IDs so renames update the existing folder
+  if (!driveMap.spaceFolders) driveMap.spaceFolders = {};
+  const spaceFolders = buildSpaceFolderNames(state.spaces);
+  for (const space of state.spaces) {
+    if (!space.notes || space.notes.length === 0) continue;
+    const wantName = spaceFolders[space.id];
+    const stored = driveMap.spaceFolders[space.id];
+    let folderId;
+
+    if (stored && stored.id) {
+      // Rename Drive folder if space was renamed
+      if (stored.name !== wantName) {
+        const rr = await fetch('https://www.googleapis.com/drive/v3/files/' + stored.id, {
+          method: 'PATCH',
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: wantName })
+        });
+        if (rr.ok) {
+          stored.name = wantName;
+          folderId = stored.id;
+        } else {
+          // Folder may have been deleted externally — create fresh
+          folderId = await ensureDriveExportFolder(token, wantName, rootId);
+          driveMap.spaceFolders[space.id] = { id: folderId, name: wantName };
+        }
+      } else {
+        folderId = stored.id;
+      }
+    } else {
+      folderId = await ensureDriveExportFolder(token, wantName, rootId);
+      driveMap.spaceFolders[space.id] = { id: folderId, name: wantName };
+    }
+
+    for (const note of space.notes) {
+      if (!note.content && !note.title) continue;
+      const date = note.createdAt ? note.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+      await drivePutFile(token, 'note:' + note.id, makeNoteFilename(date, note.title), note.content, folderId, driveMap);
+    }
+  }
+
+  await chrome.storage.local.set({ noteExportMap });
+}
+
+/** Exports all notes as .txt files to Nextcloud via WebDAV. */
+async function exportNotesToNextcloud() {
+  const { url, username, password } = notesExportConfig.nextcloud;
+  if (!url) throw new Error('Server URL not configured');
+  if (!username) throw new Error('Username not configured');
+  if (!password) throw new Error('App password not configured');
+  const base = url.replace(/\/+$/, '');
+
+  // Unicode-safe Base64 encoding for Basic auth
+  const credentials = new TextEncoder().encode(username + ':' + password);
+  const b64 = btoa(String.fromCharCode(...credentials));
+
+  async function webdav(method, path, body) {
+    const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+    const fullUrl = base + '/remote.php/dav/files/' + encodeURIComponent(username) + '/' + encodedPath;
+    const headers = { 'Authorization': 'Basic ' + b64 };
+    if (body != null) headers['Content-Type'] = 'text/plain; charset=utf-8';
+    const resp = await fetch(fullUrl, { method, headers, body });
+    if (resp.status === 401) throw new Error('Authentication failed — check your username and app password');
+    if (resp.status === 403) throw new Error('Access denied — check your Nextcloud permissions');
+    return resp;
+  }
+
+  async function mkdirp(path) {
+    const resp = await webdav('MKCOL', path);
+    if (!resp.ok && resp.status !== 405) throw new Error('Nextcloud MKCOL ' + path + ': ' + resp.status);
+  }
+
+  const { noteExportMap = {} } = await chrome.storage.local.get('noteExportMap');
+  if (!noteExportMap.nextcloud) noteExportMap.nextcloud = {};
+  const ncMap = noteExportMap.nextcloud;
+
+  async function ncPutFile(key, folderPath, filename, content) {
+    const newPath = folderPath + '/' + filename;
+    const prev = ncMap[key];
+    if (prev && prev.path && prev.path !== newPath) {
+      try { await webdav('DELETE', prev.path); } catch {}
+    }
+    const resp = await webdav('PUT', newPath, content);
+    if (!resp.ok) throw new Error('Nextcloud PUT ' + newPath + ': ' + resp.status);
+    ncMap[key] = { path: newPath };
+  }
+
+  await mkdirp('Snackbar');
+
+  // Daily notes
+  const { notepadPages = {} } = await chrome.storage.local.get('notepadPages');
+  const dailyEntries = Object.entries(notepadPages).filter(([, page]) => {
+    const p = typeof page === 'string' ? { title: '', content: page } : page;
+    return p.content || p.title;
+  });
+  if (dailyEntries.length > 0) {
+    await mkdirp('Snackbar/Daily');
+    for (const [date, page] of dailyEntries) {
+      const p = typeof page === 'string' ? { title: '', content: page } : page;
+      await ncPutFile('daily:' + date, 'Snackbar/Daily', makeNoteFilename(date, p.title), p.content);
+    }
+  }
+
+  // Space notes — track folder paths so renames MOVE the existing folder
+  if (!ncMap.spaceFolders) ncMap.spaceFolders = {};
+  const spaceFoldersNC = buildSpaceFolderNames(state.spaces);
+  for (const space of state.spaces) {
+    if (!space.notes || space.notes.length === 0) continue;
+    const wantFolder = 'Snackbar/' + spaceFoldersNC[space.id];
+    const stored = ncMap.spaceFolders[space.id];
+
+    if (stored && stored.path && stored.path !== wantFolder) {
+      // Rename via WebDAV MOVE
+      const oldEnc = stored.path.split('/').map(encodeURIComponent).join('/');
+      const newEnc = wantFolder.split('/').map(encodeURIComponent).join('/');
+      const davBase = base + '/remote.php/dav/files/' + encodeURIComponent(username) + '/';
+      try {
+        const mr = await fetch(davBase + oldEnc, {
+          method: 'MOVE',
+          headers: { 'Authorization': 'Basic ' + b64, 'Destination': davBase + newEnc }
+        });
+        if (mr.ok || mr.status === 201) {
+          // Update tracked file paths under the old folder
+          const oldPrefix = stored.path + '/';
+          const newPrefix = wantFolder + '/';
+          for (const v of Object.values(ncMap)) {
+            if (v.path && v.path.startsWith(oldPrefix)) {
+              v.path = newPrefix + v.path.slice(oldPrefix.length);
+            }
+          }
+        }
+      } catch {}
+    }
+
+    await mkdirp(wantFolder); // ensure exists (MOVE may have failed or folder is new)
+    ncMap.spaceFolders[space.id] = { path: wantFolder };
+
+    for (const note of space.notes) {
+      if (!note.content && !note.title) continue;
+      const date = note.createdAt ? note.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+      await ncPutFile('note:' + note.id, wantFolder, makeNoteFilename(date, note.title), note.content);
+    }
+  }
+
+  await chrome.storage.local.set({ noteExportMap });
+}
+
+/** Exports notes to all enabled cloud destinations. Returns { results, errors }. */
+async function exportNotesToCloud() {
+  const results = [];
+  const errors = [];
+  if (notesExportConfig.googleDrive) {
+    try { await exportNotesToDrive(); results.push('Drive'); }
+    catch (e) { errors.push('Drive: ' + e.message); console.error('Drive export failed:', e); }
+  }
+  if (notesExportConfig.nextcloud.enabled) {
+    try { await exportNotesToNextcloud(); results.push('Nextcloud'); }
+    catch (e) { errors.push('Nextcloud: ' + e.message); console.error('Nextcloud export failed:', e); }
+  }
+  if (results.length > 0) {
+    await chrome.storage.local.set({ lastNotesExportAt: Date.now() });
+  }
+  return { results, errors };
 }
 
 // ── Navigation ──
@@ -1397,11 +1712,14 @@ function renderSettingsView() {
     <select class="settings-terminal-input" id="transcriptionProvider">
       <option value="groq" ${transcriptionConfig.provider === 'groq' ? 'selected' : ''}>Groq (free)</option>
       <option value="openai" ${transcriptionConfig.provider === 'openai' ? 'selected' : ''}>OpenAI</option>
+      <option value="custom" ${transcriptionConfig.provider === 'custom' ? 'selected' : ''}>Custom endpoint</option>
     </select>
   `;
   providerField.querySelector('select').addEventListener('change', async (e) => {
     transcriptionConfig.provider = e.target.value;
     await saveTranscriptionConfig();
+    customFields.style.display = e.target.value === 'custom' ? 'block' : 'none';
+    keyTip.style.display = e.target.value === 'custom' ? 'none' : 'block';
   });
   transcriptionSection.appendChild(providerField);
 
@@ -1418,9 +1736,58 @@ function renderSettingsView() {
   });
   transcriptionSection.appendChild(keyField);
 
+  // Custom endpoint fields (shown only when provider is 'custom')
+  const customFields = document.createElement('div');
+  customFields.style.display = transcriptionConfig.provider === 'custom' ? 'block' : 'none';
+
+  const urlField = document.createElement('div');
+  urlField.className = 'settings-terminal-field';
+  urlField.style.marginTop = '8px';
+  urlField.innerHTML = `
+    <label class="settings-row-label">Endpoint URL</label>
+    <input type="text" class="settings-terminal-input" value="${escapeHtml(transcriptionConfig.customUrl)}" placeholder="https://api.example.com/v1/audio/transcriptions">
+  `;
+  urlField.querySelector('input').addEventListener('change', async (e) => {
+    transcriptionConfig.customUrl = e.target.value.trim();
+    await saveTranscriptionConfig();
+  });
+  customFields.appendChild(urlField);
+
+  const modelField = document.createElement('div');
+  modelField.className = 'settings-terminal-field';
+  modelField.style.marginTop = '8px';
+  modelField.innerHTML = `
+    <label class="settings-row-label">Model (optional)</label>
+    <input type="text" class="settings-terminal-input" value="${escapeHtml(transcriptionConfig.customModel)}" placeholder="whisper-large-v3">
+  `;
+  modelField.querySelector('input').addEventListener('change', async (e) => {
+    transcriptionConfig.customModel = e.target.value.trim();
+    await saveTranscriptionConfig();
+  });
+  customFields.appendChild(modelField);
+
+  transcriptionSection.appendChild(customFields);
+
+  const maxField = document.createElement('div');
+  maxField.className = 'settings-terminal-field';
+  maxField.style.marginTop = '8px';
+  maxField.innerHTML = `
+    <label class="settings-row-label">Auto-stop recording</label>
+    <select class="settings-terminal-input" id="transcriptionMaxMinutes">
+      <option value="60" ${transcriptionConfig.maxMinutes === 60 ? 'selected' : ''}>After 1 hour</option>
+      <option value="120" ${transcriptionConfig.maxMinutes === 120 ? 'selected' : ''}>After 2 hours</option>
+    </select>
+  `;
+  maxField.querySelector('select').addEventListener('change', async (e) => {
+    transcriptionConfig.maxMinutes = parseInt(e.target.value);
+    await saveTranscriptionConfig();
+  });
+  transcriptionSection.appendChild(maxField);
+
   const keyTip = document.createElement('div');
   keyTip.className = 'settings-row-desc';
   keyTip.style.marginTop = '6px';
+  keyTip.style.display = transcriptionConfig.provider === 'custom' ? 'none' : 'block';
   keyTip.innerHTML = 'Get a free key at <a href="#" class="settings-link" id="transcriptionKeyLink">groq.com</a>';
   transcriptionSection.appendChild(keyTip);
   // Defer event listener since innerHTML replaces elements
@@ -1518,6 +1885,7 @@ function renderSettingsView() {
     syncBtn.querySelector('span').textContent = 'Syncing...';
     try {
       const result = await syncToCloud();
+      exportNotesToCloud().catch(e => console.warn('Background notes export failed:', e));
       syncBtn.querySelector('span').textContent = result === 'pulled' ? 'Updated from cloud' : 'Backed up to cloud';
       // Update last synced display
       const statusEl = syncSection.querySelector('.settings-sync-status');
@@ -1546,6 +1914,225 @@ function renderSettingsView() {
   syncSection.appendChild(syncStatus);
 
   wrap.appendChild(syncSection);
+
+  // Notes Export section
+  const exportSection = document.createElement('div');
+  exportSection.className = 'settings-section';
+  const exportSectionLabel = document.createElement('div');
+  exportSectionLabel.className = 'settings-section-label';
+  exportSectionLabel.textContent = 'Notes Export';
+  exportSection.appendChild(exportSectionLabel);
+
+  const exportDesc = document.createElement('div');
+  exportDesc.className = 'settings-row-desc';
+  exportDesc.style.marginBottom = '8px';
+  exportDesc.textContent = 'Export daily notes and workspace notes as .txt files, organized in folders per space.';
+  exportSection.appendChild(exportDesc);
+
+  // Google Drive toggle
+  const driveExRow = document.createElement('div');
+  driveExRow.className = 'settings-row';
+  const driveExInfo = document.createElement('div');
+  driveExInfo.className = 'settings-row-info';
+  const driveExIcon = createLucideIcon('hard-drive', 16);
+  driveExIcon.style.flexShrink = '0';
+  driveExInfo.appendChild(driveExIcon);
+  const driveExText = document.createElement('div');
+  const driveExLabel = document.createElement('div');
+  driveExLabel.className = 'settings-row-label';
+  driveExLabel.textContent = 'Google Drive';
+  driveExText.appendChild(driveExLabel);
+  const driveExDesc = document.createElement('div');
+  driveExDesc.className = 'settings-row-desc';
+  driveExDesc.textContent = 'Save to a Snackbar folder in your Drive';
+  driveExText.appendChild(driveExDesc);
+  driveExInfo.appendChild(driveExText);
+  driveExRow.appendChild(driveExInfo);
+  const driveExToggle = document.createElement('label');
+  driveExToggle.className = 'settings-toggle';
+  driveExToggle.innerHTML = `<input type="checkbox" ${notesExportConfig.googleDrive ? 'checked' : ''}><span class="settings-slider"></span>`;
+  driveExToggle.querySelector('input').addEventListener('change', async (e) => {
+    notesExportConfig.googleDrive = e.target.checked;
+    await saveNotesExportConfig();
+  });
+  driveExRow.appendChild(driveExToggle);
+  exportSection.appendChild(driveExRow);
+
+  // Nextcloud toggle
+  const ncExRow = document.createElement('div');
+  ncExRow.className = 'settings-row';
+  const ncExInfo = document.createElement('div');
+  ncExInfo.className = 'settings-row-info';
+  const ncExIcon = createLucideIcon('cloud', 16);
+  ncExIcon.style.flexShrink = '0';
+  ncExInfo.appendChild(ncExIcon);
+  const ncExText = document.createElement('div');
+  const ncExLabel = document.createElement('div');
+  ncExLabel.className = 'settings-row-label';
+  ncExLabel.textContent = 'Nextcloud';
+  ncExText.appendChild(ncExLabel);
+  const ncExDesc = document.createElement('div');
+  ncExDesc.className = 'settings-row-desc';
+  ncExDesc.textContent = 'Save to a Snackbar folder via WebDAV';
+  ncExText.appendChild(ncExDesc);
+  ncExInfo.appendChild(ncExText);
+  ncExRow.appendChild(ncExInfo);
+  const ncExToggle = document.createElement('label');
+  ncExToggle.className = 'settings-toggle';
+  ncExToggle.innerHTML = `<input type="checkbox" ${notesExportConfig.nextcloud.enabled ? 'checked' : ''}><span class="settings-slider"></span>`;
+  ncExToggle.querySelector('input').addEventListener('change', async (e) => {
+    notesExportConfig.nextcloud.enabled = e.target.checked;
+    await saveNotesExportConfig();
+    renderSettingsView();
+  });
+  ncExRow.appendChild(ncExToggle);
+  exportSection.appendChild(ncExRow);
+
+  if (notesExportConfig.nextcloud.enabled) {
+    const ncUrlField = document.createElement('div');
+    ncUrlField.className = 'settings-terminal-field';
+    ncUrlField.innerHTML = `
+      <label class="settings-row-label">Server URL</label>
+      <input type="text" class="settings-terminal-input" value="${escapeHtml(notesExportConfig.nextcloud.url)}" placeholder="https://cloud.example.com">
+    `;
+    ncUrlField.querySelector('input').addEventListener('change', async (e) => {
+      notesExportConfig.nextcloud.url = e.target.value.trim();
+      await saveNotesExportConfig();
+      renderSettingsView();
+    });
+    exportSection.appendChild(ncUrlField);
+
+    const ncUserField = document.createElement('div');
+    ncUserField.className = 'settings-terminal-field';
+    ncUserField.style.marginTop = '8px';
+    ncUserField.innerHTML = `
+      <label class="settings-row-label">Username</label>
+      <input type="text" class="settings-terminal-input" value="${escapeHtml(notesExportConfig.nextcloud.username)}" placeholder="your-username">
+    `;
+    ncUserField.querySelector('input').addEventListener('change', async (e) => {
+      notesExportConfig.nextcloud.username = e.target.value.trim();
+      await saveNotesExportConfig();
+    });
+    exportSection.appendChild(ncUserField);
+
+    const ncPassField = document.createElement('div');
+    ncPassField.className = 'settings-terminal-field';
+    ncPassField.style.marginTop = '8px';
+    ncPassField.innerHTML = `
+      <label class="settings-row-label">App password</label>
+      <input type="password" class="settings-terminal-input" value="${escapeHtml(notesExportConfig.nextcloud.password)}" placeholder="Paste an app password">
+    `;
+    ncPassField.querySelector('input').addEventListener('change', async (e) => {
+      notesExportConfig.nextcloud.password = e.target.value;
+      await saveNotesExportConfig();
+    });
+    exportSection.appendChild(ncPassField);
+
+    const ncTip = document.createElement('div');
+    ncTip.className = 'settings-row-desc';
+    ncTip.style.marginTop = '6px';
+    ncTip.textContent = 'Use a revocable app password from your Nextcloud security settings. Stored locally in the extension.';
+    exportSection.appendChild(ncTip);
+
+    // Prompt for host permission if needed
+    if (notesExportConfig.nextcloud.url) {
+      try {
+        const ncOrigin = new URL(notesExportConfig.nextcloud.url).origin + '/*';
+        chrome.permissions.contains({ origins: [ncOrigin] }, (has) => {
+          if (!has) {
+            const grantBtn = document.createElement('button');
+            grantBtn.className = 'settings-action-btn';
+            grantBtn.style.marginTop = '8px';
+            grantBtn.textContent = 'Grant access to ' + new URL(notesExportConfig.nextcloud.url).hostname;
+            grantBtn.addEventListener('click', () => {
+              chrome.permissions.request({ origins: [ncOrigin] }, (granted) => {
+                if (granted) { grantBtn.textContent = 'Access granted'; grantBtn.disabled = true; }
+              });
+            });
+            exportSection.appendChild(grantBtn);
+          }
+        });
+      } catch {}
+    }
+
+    // Test connection button
+    const testBtn = document.createElement('button');
+    testBtn.className = 'settings-action-btn';
+    testBtn.style.marginTop = '8px';
+    testBtn.textContent = 'Test connection';
+    testBtn.addEventListener('click', async () => {
+      testBtn.disabled = true;
+      testBtn.textContent = 'Testing...';
+      try {
+        const { url, username, password } = notesExportConfig.nextcloud;
+        if (!url || !username || !password) throw new Error('Fill in all fields first');
+        const ncBase = url.replace(/\/+$/, '');
+        const cred = new TextEncoder().encode(username + ':' + password);
+        const auth = 'Basic ' + btoa(String.fromCharCode(...cred));
+        const resp = await fetch(ncBase + '/remote.php/dav/files/' + encodeURIComponent(username) + '/', {
+          method: 'PROPFIND',
+          headers: { 'Authorization': auth, 'Depth': '0' }
+        });
+        if (resp.status === 401) throw new Error('Authentication failed — check credentials');
+        if (resp.status === 403) throw new Error('Access denied');
+        if (!resp.ok && resp.status !== 207) throw new Error('Server returned ' + resp.status);
+        testBtn.textContent = 'Connected successfully';
+      } catch (e) {
+        if (e.message === 'Failed to fetch') {
+          testBtn.textContent = 'Network error — check URL or grant access above';
+        } else {
+          testBtn.textContent = e.message;
+        }
+      }
+      testBtn.disabled = false;
+      setTimeout(() => { testBtn.textContent = 'Test connection'; }, 3000);
+    });
+    exportSection.appendChild(testBtn);
+  }
+
+  // Export now button
+  const exportNowBtn = document.createElement('button');
+  exportNowBtn.className = 'settings-sync-btn';
+  exportNowBtn.style.marginTop = '12px';
+  exportNowBtn.innerHTML = createLucideIcon('upload', 16).outerHTML + '<span>Export notes now</span>';
+  exportNowBtn.addEventListener('click', async () => {
+    exportNowBtn.disabled = true;
+    exportNowBtn.querySelector('span').textContent = 'Exporting...';
+    try {
+      const { results, errors } = await exportNotesToCloud();
+      if (errors.length > 0) {
+        exportNowBtn.querySelector('span').textContent = errors.join('; ');
+      } else if (results.length > 0) {
+        exportNowBtn.querySelector('span').textContent = 'Exported to ' + results.join(' & ');
+        const statusEl = exportSection.querySelector('.settings-sync-status');
+        if (statusEl) statusEl.textContent = 'Last exported: just now';
+      } else {
+        exportNowBtn.querySelector('span').textContent = 'Enable a target above first';
+      }
+    } catch (e) {
+      exportNowBtn.querySelector('span').textContent = 'Export failed: ' + e.message;
+      console.error('Notes export error:', e);
+    }
+    exportNowBtn.disabled = false;
+    setTimeout(() => {
+      exportNowBtn.innerHTML = createLucideIcon('upload', 16).outerHTML + '<span>Export notes now</span>';
+    }, 2500);
+  });
+  exportSection.appendChild(exportNowBtn);
+
+  const exportStatusEl = document.createElement('div');
+  exportStatusEl.className = 'settings-sync-status';
+  chrome.storage.local.get('lastNotesExportAt').then(({ lastNotesExportAt }) => {
+    if (lastNotesExportAt) {
+      const d = new Date(lastNotesExportAt);
+      exportStatusEl.textContent = 'Last exported: ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    } else {
+      exportStatusEl.textContent = 'Never exported';
+    }
+  });
+  exportSection.appendChild(exportStatusEl);
+
+  wrap.appendChild(exportSection);
 
   // Data section
   const dataSection = document.createElement('div');
@@ -2181,6 +2768,7 @@ let notepadSaveTimer = null;   // debounce timer for auto-saving notepad content
 let isTranscribing = false;
 let mediaRecorder = null;      // MediaRecorder for voice capture
 let audioChunks = [];          // recorded audio data
+let recordingAutoStopTimer = null; // auto-stop safety timer
 let notepadMode = 'daily';     // 'daily' = date-based notes, 'notes' = workspace notes, 'todos' = workspace todo lists
 let activeSpaceNoteId = null;  // ID of the space note currently open in the editor
 let activeSpaceTodoId = null;  // ID of the todo list currently open in the editor
@@ -2818,6 +3406,11 @@ async function startTranscription(textarea, status) {
     setTimeout(() => { status.textContent = ''; }, 3000);
     return;
   }
+  if (transcriptionConfig.provider === 'custom' && !transcriptionConfig.customUrl) {
+    status.textContent = 'Add endpoint URL in Settings';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+    return;
+  }
 
   const hasMic = await hasMicPermission();
   if (!hasMic) {
@@ -2834,6 +3427,16 @@ async function startTranscription(textarea, status) {
     mediaRecorder.start();
     isTranscribing = true;
     status.textContent = 'Recording...';
+
+    // Auto-stop safety: prevent runaway recordings
+    clearTimeout(recordingAutoStopTimer);
+    const maxMs = (transcriptionConfig.maxMinutes || 60) * 60 * 1000;
+    recordingAutoStopTimer = setTimeout(async () => {
+      if (isTranscribing) {
+        await stopTranscription(textarea, status);
+        renderNotepadView();
+      }
+    }, maxMs);
   } catch {
     status.textContent = 'Mic access denied';
     setTimeout(() => { status.textContent = ''; }, 3000);
@@ -2842,6 +3445,7 @@ async function startTranscription(textarea, status) {
 
 /** Stops recording and sends audio to the Whisper API for transcription. */
 async function stopTranscription(textarea, status) {
+  clearTimeout(recordingAutoStopTimer);
   if (!mediaRecorder || mediaRecorder.state === 'inactive') {
     isTranscribing = false;
     return;
@@ -2884,14 +3488,17 @@ async function stopTranscription(textarea, status) {
 async function sendToWhisperAPI(blob) {
   const formData = new FormData();
   formData.append('file', blob, 'recording.webm');
-  formData.append('model', 'whisper-large-v3');
 
   let url;
   if (transcriptionConfig.provider === 'openai') {
     url = 'https://api.openai.com/v1/audio/transcriptions';
-    formData.set('model', 'whisper-1');
+    formData.append('model', 'whisper-1');
+  } else if (transcriptionConfig.provider === 'custom') {
+    url = transcriptionConfig.customUrl;
+    if (transcriptionConfig.customModel) formData.append('model', transcriptionConfig.customModel);
   } else {
     url = 'https://api.groq.com/openai/v1/audio/transcriptions';
+    formData.append('model', 'whisper-large-v3');
   }
 
   const res = await fetch(url, {
@@ -3704,6 +4311,7 @@ function showNotesModal(link, type, groupId) {
 async function init() {
   await loadState();
   await loadFeatures();
+  await loadNotesExportConfig();
   await loadFocusTimerState();
   applyTheme();
   render();

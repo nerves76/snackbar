@@ -11,11 +11,13 @@
     "alarms",
     "identity"
   ],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
   "oauth2": {
     "client_id": "745168817868-g86tdutmes50332083ub4dv0ts9u4h2l.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/calendar.readonly",
-      "https://www.googleapis.com/auth/drive.appdata"
+      "https://www.googleapis.com/auth/drive.appdata",
+      "https://www.googleapis.com/auth/drive.file"
     ]
   },
   "side_panel": {
