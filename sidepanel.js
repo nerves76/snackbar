@@ -2982,6 +2982,37 @@ async function renderDailyNotepad() {
     toolbar.appendChild(helpBtn);
   }
 
+  // Cloud export button — shown when Drive or Nextcloud is enabled
+  const hasExport = notesExportConfig.googleDrive || notesExportConfig.nextcloud.enabled;
+  if (hasExport) {
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'notepad-mic-btn';
+    exportBtn.title = 'Save notes to cloud';
+    exportBtn.appendChild(createLucideIcon('cloud-upload', 14));
+    const exportLabel = document.createElement('span');
+    exportLabel.textContent = 'Save';
+    exportBtn.appendChild(exportLabel);
+    exportBtn.addEventListener('click', async () => {
+      await flushNotepad();
+      exportBtn.disabled = true;
+      exportLabel.textContent = 'Saving...';
+      try {
+        const { results, errors } = await exportNotesToCloud();
+        if (errors.length > 0) {
+          status.textContent = errors[0];
+        } else {
+          status.textContent = 'Saved to ' + results.join(' & ');
+        }
+      } catch (err) {
+        status.textContent = 'Export failed';
+      }
+      exportBtn.disabled = false;
+      exportLabel.textContent = 'Save';
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    });
+    toolbar.appendChild(exportBtn);
+  }
+
   $content.appendChild(toolbar);
 
   // Load note for this date
@@ -3146,6 +3177,38 @@ function renderSpaceNoteEditor(note) {
   status.className = 'notepad-status';
   status.textContent = '';
   backRow.appendChild(status);
+
+  // Cloud export button on space note editor
+  const hasExport = notesExportConfig.googleDrive || notesExportConfig.nextcloud.enabled;
+  if (hasExport) {
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'notepad-mic-btn';
+    exportBtn.title = 'Save notes to cloud';
+    exportBtn.appendChild(createLucideIcon('cloud-upload', 14));
+    const exportLabel = document.createElement('span');
+    exportLabel.textContent = 'Save';
+    exportBtn.appendChild(exportLabel);
+    exportBtn.addEventListener('click', async () => {
+      await flushSpaceNote(note);
+      exportBtn.disabled = true;
+      exportLabel.textContent = 'Saving...';
+      try {
+        const { results, errors } = await exportNotesToCloud();
+        if (errors.length > 0) {
+          status.textContent = errors[0];
+        } else {
+          status.textContent = 'Saved to ' + results.join(' & ');
+        }
+      } catch {
+        status.textContent = 'Export failed';
+      }
+      exportBtn.disabled = false;
+      exportLabel.textContent = 'Save';
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    });
+    backRow.appendChild(exportBtn);
+  }
+
   $content.appendChild(backRow);
 
   // Title
