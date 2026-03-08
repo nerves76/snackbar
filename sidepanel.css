@@ -1786,6 +1786,21 @@ html, body {
   background: #0070e0;
 }
 
+.welcome-sync {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.welcome-sync a {
+  color: #0a84ff;
+  text-decoration: none;
+}
+
+.welcome-sync a:hover {
+  text-decoration: underline;
+}
+
 .welcome-hint {
   margin-top: 16px;
   font-size: 11px;

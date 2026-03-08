@@ -1096,10 +1096,30 @@ function renderWelcome() {
       </div>
     </div>
     <button class="welcome-cta" id="welcomeCreate">Create your first workspace</button>
+    <div class="welcome-sync">Already using Snackbar? <a href="#" id="welcomeSync">Sync from Google Drive</a></div>
     <div class="welcome-hint">Press <kbd>T</kbd> <kbd>N</kbd> <kbd>C</kbd> to quickly switch views</div>
   `;
   $content.appendChild(welcome);
   welcome.querySelector('#welcomeCreate').addEventListener('click', () => showSpaceModal(null));
+  welcome.querySelector('#welcomeSync').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const link = e.target;
+    link.textContent = 'Syncing...';
+    link.style.pointerEvents = 'none';
+    try {
+      syncEnabled = true;
+      await saveSyncConfig();
+      const result = await syncToCloud();
+      if (result === 'pulled') {
+        render();
+      } else {
+        link.textContent = 'No existing data found — create a workspace to get started';
+      }
+    } catch (err) {
+      link.textContent = 'Sync failed — ' + err.message;
+      console.error('Welcome sync error:', err);
+    }
+  });
 }
 
 /** Creates a header row with a back-to-spaces button and a view title label. */
