@@ -62,24 +62,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 
-  // Chunked recording: offscreen sends audio chunks during long recordings
-  if (msg.type === 'audio-chunk-ready') {
-    handleAudioChunk(msg.audioB64);
-    return; // fire-and-forget, no response needed
-  }
 });
-
-/** Transcribes an audio chunk and sends the result to the side panel. */
-async function handleAudioChunk(audioB64) {
-  try {
-    const { transcriptionConfig } = await chrome.storage.local.get('transcriptionConfig');
-    if (!transcriptionConfig?.apiKey) return;
-    const text = await transcribeAudio(audioB64, transcriptionConfig);
-    if (text) {
-      chrome.runtime.sendMessage({ type: 'transcription-chunk', text });
-    }
-  } catch {} // best-effort — don't break recording if a chunk fails
-}
 
 /** Sends audio to a Whisper-compatible API and returns transcript text. */
 async function transcribeAudio(audioB64, config) {

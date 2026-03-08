@@ -1235,11 +1235,6 @@ html, body {
   50% { opacity: 0.3; }
 }
 
-.recording-chunk-note {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
 .notepad-mic-help {
   background: none;
   border: none;

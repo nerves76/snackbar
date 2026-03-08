@@ -34,7 +34,7 @@ Switch spaces (1-9), jump to views (T/N/C), start/stop timers (F) — all withou
 Snackbar doesn't have a server. Your data lives on your computer in Chrome's local storage — that's it. If you want backup or sync across devices, you can connect your own Google Drive. Your data goes straight from your browser to your Drive — we never see it, store it, or touch it. You're in complete control.
 
 **Voice Transcription**
-Record meetings, lectures, or just your own thoughts — right from the notepad. Audio is transcribed using your choice of provider (Groq, OpenAI, or your own self-hosted endpoint). Long recordings are automatically chunked every 10 minutes so nothing is lost. Your API key stays local; audio goes directly to your provider.
+Record meetings, lectures, or just your own thoughts — right from the notepad. Audio is transcribed using your choice of provider (Groq, OpenAI, or your own self-hosted endpoint). Your API key stays local; audio goes directly to your provider.
 
 **App Links**
 Open projects directly in your editor or terminal from the sidebar. Enable VS Code, Cursor, or any of 7 supported terminals, set your projects folder, and launch with one click. Terminal support uses Hatch, a free open-source helper app for macOS.

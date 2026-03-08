@@ -1389,35 +1389,6 @@ function renderContent() {
   addGroupBtn.addEventListener('click', () => showGroupModal(null));
   bottomActions.appendChild(addGroupBtn);
 
-  const addNoteBtn = document.createElement('button');
-  addNoteBtn.className = 'bottom-action-btn';
-  addNoteBtn.textContent = '+ Add Note';
-  addNoteBtn.addEventListener('click', async () => {
-    if (!space.notes) space.notes = [];
-    const newNote = { id: generateId('n'), title: '', content: '', createdAt: new Date().toISOString() };
-    space.notes.unshift(newNote);
-    await saveState();
-    currentView = 'notepad';
-    notepadMode = 'notes';
-    activeSpaceNoteId = newNote.id;
-    render();
-  });
-  bottomActions.appendChild(addNoteBtn);
-
-  const addTodoBtn = document.createElement('button');
-  addTodoBtn.className = 'bottom-action-btn';
-  addTodoBtn.textContent = '+ Add Todo';
-  addTodoBtn.addEventListener('click', async () => {
-    if (!space.todos) space.todos = [];
-    const newTodo = { id: generateId('td'), title: '', items: [{ id: generateId('ti'), text: '', done: false }], pinned: false, createdAt: new Date().toISOString() };
-    space.todos.unshift(newTodo);
-    await saveState();
-    currentView = 'notepad';
-    notepadMode = 'todos';
-    activeSpaceTodoId = newTodo.id;
-    render();
-  });
-  bottomActions.appendChild(addTodoBtn);
 
   $content.appendChild(bottomActions);
 }
@@ -1982,7 +1953,7 @@ function renderSettingsTranscription() {
   helpPanel.className = 'settings-transcription-help';
   helpPanel.innerHTML = `
     <p><b>How it works:</b> Click Record on your daily notepad to capture audio from your microphone. When you stop, the audio is sent to your chosen provider for transcription.</p>
-    <p><b>Long recordings:</b> For meetings or lectures, audio is automatically transcribed in 10-minute chunks so nothing is lost. Results appear in your notepad as they're ready.</p>
+    <p><b>Long recordings:</b> Recording auto-stops after the limit you set in settings (1 or 2 hours). Very long recordings may fail depending on your provider's file size limits.</p>
     <p><b>Video meetings:</b> Works great for capturing meeting notes. If your mic picks up both sides of the conversation, the full discussion is transcribed.</p>
     <p><b>Privacy:</b> Audio is sent directly to your provider — nothing passes through or is stored by Snackbar.</p>
   `;
@@ -2975,11 +2946,6 @@ async function renderDailyNotepad() {
         renderNotepadView();
       });
       toolbar.appendChild(stopBtn);
-
-      const chunkNote = document.createElement('span');
-      chunkNote.className = 'recording-chunk-note';
-      chunkNote.textContent = 'Transcription happens in 10 minute chunks. Click Stop to transcribe remaining.';
-      toolbar.appendChild(chunkNote);
     } else {
       const recBtn = document.createElement('button');
       recBtn.className = 'notepad-mic-btn';
@@ -3009,7 +2975,7 @@ async function renderDailyNotepad() {
       panel.innerHTML = `
         <strong>Voice Recording</strong>
         <p>Click <b>Record</b> to capture audio from your microphone and transcribe it to text using AI.</p>
-        <p>For <b>long recordings</b> (meetings, lectures), audio is automatically transcribed every 10 minutes so you don't lose anything. Click <b>Stop</b> to transcribe the remaining audio.</p>
+        <p>For <b>long recordings</b> (meetings, lectures), recording auto-stops after your configured limit. Very long recordings may fail depending on your provider's file size limits.</p>
         <p><b>Video meetings:</b> If your mic picks up both sides of the conversation (e.g. speakers + mic on the same device), the full discussion will be transcribed — great for meeting notes.</p>
         <p>Set up your transcription provider and API key in <a href="#" class="recording-help-settings-link">Settings</a>. Your audio is sent directly to your chosen provider — nothing is stored by Snackbar.</p>
       `;
@@ -3543,19 +3509,6 @@ async function flushNotepad() {
 }
 
 // ── Speech-to-Text (Whisper API via offscreen document) ──
-
-// Listen for progressive transcription chunks from long recordings
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.type === 'transcription-chunk' && msg.text) {
-    const textarea = document.querySelector('.notepad-textarea');
-    if (!textarea) return;
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    textarea.value += (textarea.value && !textarea.value.endsWith('\n') ? '\n' : '') + `[${time}] ${msg.text}\n`;
-    textarea.scrollTop = textarea.scrollHeight;
-    const titleEl = document.querySelector('.notepad-title');
-    saveNotepadContent(titleEl ? titleEl.value : '', textarea.value);
-  }
-});
 
 /** Starts recording audio via the offscreen document. */
 async function startTranscription(textarea, status) {
