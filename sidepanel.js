@@ -1934,12 +1934,12 @@ function renderSettingsTranscription() {
   wrap.appendChild(desc);
 
   const helpPanel = document.createElement('div');
-  helpPanel.className = 'settings-transcription-help';
+  helpPanel.className = 'settings-help-block';
   helpPanel.innerHTML = `
-    <p><b>How it works:</b> Click Record on your daily notepad to capture audio from your microphone. When you stop, the audio is sent to your chosen provider for transcription.</p>
-    <p><b>Long recordings:</b> Recording auto-stops after the limit you set in settings (1 or 2 hours). Very long recordings may fail depending on your provider's file size limits.</p>
-    <p><b>Video meetings:</b> Works great for capturing meeting notes. If your mic picks up both sides of the conversation, the full discussion is transcribed.</p>
-    <p><b>Privacy:</b> Audio is sent directly to your provider — nothing passes through or is stored by Snackbar.</p>
+    <div class="help-item"><strong>How it works</strong><p>Click Record on your daily notepad to capture audio from your microphone. When you stop, the audio is sent to your chosen provider for transcription.</p></div>
+    <div class="help-item"><strong>Long recordings</strong><p>Recording auto-stops after the limit you set below (1 or 2 hours). Very long recordings may fail depending on your provider's file size limits.</p></div>
+    <div class="help-item"><strong>Video meetings</strong><p>Works great for capturing meeting notes. If your mic picks up both sides of the conversation, the full discussion is transcribed.</p></div>
+    <div class="help-item"><strong>Privacy</strong><p>Audio is sent directly to your provider — nothing passes through or is stored by Snackbar.</p></div>
   `;
   wrap.appendChild(helpPanel);
 
@@ -2056,13 +2056,13 @@ function renderSettingsNotesExport() {
   wrap.appendChild(desc);
 
   const helpPanel = document.createElement('div');
-  helpPanel.className = 'settings-transcription-help';
+  helpPanel.className = 'settings-help-block';
   helpPanel.innerHTML = `
-    <p><b>How it works:</b> When you click "Save now", all your daily notes and workspace notes are saved as <b>.txt files</b> organized into folders — one per space, plus a "Daily Notes" folder.</p>
-    <p><b>Google Drive:</b> Files are saved to a <b>Snackbar</b> folder in your Drive. You sign in with your Google account and Snackbar only has access to files it creates — it can't see anything else in your Drive.</p>
-    <p><b>Nextcloud:</b> Files are saved via WebDAV to a <b>Snackbar</b> folder on your server. Use an <b>app password</b> (not your main password) from your Nextcloud security settings for safe, revocable access.</p>
-    <p><b>Updates, not duplicates:</b> If a note already exists, it's updated in place. Renamed notes create a new file (the old one stays). Deleted notes are not removed from the cloud — they're kept as an archive.</p>
-    <p><b>This is save, not sync.</b> Notes are pushed to the cloud when you click "Save now". They are not automatically synced or pulled back into Snackbar. Use the Sync feature for full two-way sync across devices.</p>
+    <div class="help-item"><strong>How it works</strong><p>When you click "Save now", all your daily notes and workspace notes are saved as .txt files organized into folders — one per space, plus a "Daily Notes" folder.</p></div>
+    <div class="help-item"><strong>Google Drive</strong><p>Files are saved to a Snackbar folder in your Drive. You sign in with your Google account and Snackbar only has access to files it creates.</p></div>
+    <div class="help-item"><strong>Nextcloud</strong><p>Files are saved via WebDAV to a Snackbar folder on your server. Use an app password (not your main password) from your Nextcloud security settings.</p></div>
+    <div class="help-item"><strong>Updates, not duplicates</strong><p>If a note already exists, it's updated in place. Renamed notes create a new file. Deleted notes are kept in the cloud as an archive.</p></div>
+    <div class="help-item"><strong>Save, not sync</strong><p>Notes are pushed to the cloud when you click "Save now". They are not automatically synced or pulled back. Use the Sync feature for two-way sync across devices.</p></div>
   `;
   wrap.appendChild(helpPanel);
 
@@ -2246,9 +2246,9 @@ function renderSettingsSync() {
   const help = document.createElement('div');
   help.className = 'settings-help-block';
   help.innerHTML = `
-    <p><b>How it works:</b> When you click "Sync now", Snackbar stores a copy of your data in a <b>hidden app folder</b> on your Google Drive. On another computer with the same Google account, syncing pulls that data down.</p>
-    <p><b>Google account required.</b> The first time you sync, Chrome will ask you to sign in and grant Snackbar access to its own app folder. This folder is private — it won't appear in your Drive files.</p>
-    <p><b>Last write wins.</b> If you make changes on two computers, the most recent sync overwrites the older one. Sync often to stay current.</p>
+    <div class="help-item"><strong>How it works</strong><p>When you click "Sync now", Snackbar stores a copy of your data in a hidden app folder on your Google Drive. On another computer with the same Google account, syncing pulls that data down.</p></div>
+    <div class="help-item"><strong>Google account required</strong><p>The first time you sync, Chrome will ask you to sign in and grant Snackbar access to its own app folder. This folder is private — it won't appear in your Drive files.</p></div>
+    <div class="help-item"><strong>Last write wins</strong><p>If you make changes on two computers, the most recent sync overwrites the older one. Sync often to stay current.</p></div>
   `;
   wrap.appendChild(help);
 
