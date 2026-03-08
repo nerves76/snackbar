@@ -1939,6 +1939,17 @@ function renderSettingsView() {
   exportDesc.textContent = 'Export daily notes and workspace notes as .txt files, organized in folders per space.';
   exportSection.appendChild(exportDesc);
 
+  const exportHelp = document.createElement('div');
+  exportHelp.className = 'settings-transcription-help';
+  exportHelp.innerHTML = `
+    <p><b>How it works:</b> When you click "Export now", all your daily notes and workspace notes are saved as <b>.txt files</b> organized into folders — one per space, plus a "Daily Notes" folder.</p>
+    <p><b>Google Drive:</b> Files are saved to a <b>Snackbar</b> folder in your Drive. You sign in with your Google account and Snackbar only has access to files it creates — it can't see anything else in your Drive.</p>
+    <p><b>Nextcloud:</b> Files are saved via WebDAV to a <b>Snackbar</b> folder on your server. Use an <b>app password</b> (not your main password) from your Nextcloud security settings for safe, revocable access.</p>
+    <p><b>Updates, not duplicates:</b> If a note already exists, it's updated in place. Renamed notes create a new file (the old one stays). Deleted notes are not removed from the cloud — they're kept as an archive.</p>
+    <p><b>This is export, not sync.</b> Notes are pushed to the cloud when you click "Export now". They are not automatically synced or pulled back into Snackbar. Use the Sync feature above for full two-way sync across devices.</p>
+  `;
+  exportSection.appendChild(exportHelp);
+
   // Google Drive toggle
   const driveExRow = document.createElement('div');
   driveExRow.className = 'settings-row';
