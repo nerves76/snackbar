@@ -1243,6 +1243,82 @@ html, body {
   margin-top: 2px;
 }
 
+.notepad-mic-help {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.notepad-mic-help:hover {
+  color: var(--text-secondary);
+}
+
+.recording-help-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.recording-help-panel strong {
+  color: var(--text);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.recording-help-panel p {
+  margin: 0 0 8px;
+}
+
+.recording-help-panel p:last-child {
+  margin-bottom: 0;
+}
+
+.recording-help-panel b {
+  color: var(--text);
+}
+
+.recording-help-panel a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.recording-help-panel a:hover {
+  text-decoration: underline;
+}
+
+.settings-transcription-help {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.settings-transcription-help p {
+  margin: 0 0 6px;
+}
+
+.settings-transcription-help p:last-child {
+  margin-bottom: 0;
+}
+
+.settings-transcription-help b {
+  color: var(--text);
+}
+
 /* ── Calendar View ── */
 /* Upcoming events list with colored left stripe per calendar */
 .calendar-list {

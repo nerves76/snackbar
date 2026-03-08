@@ -1705,6 +1705,16 @@ function renderSettingsView() {
   transcriptionDesc.textContent = 'Add an API key to enable the mic button on your daily notepad. Your key is stored locally.';
   transcriptionSection.appendChild(transcriptionDesc);
 
+  const transcriptionHelp = document.createElement('div');
+  transcriptionHelp.className = 'settings-transcription-help';
+  transcriptionHelp.innerHTML = `
+    <p><b>How it works:</b> Click Record on your daily notepad to capture audio from your microphone. When you stop, the audio is sent to your chosen provider for transcription.</p>
+    <p><b>Long recordings:</b> For meetings or lectures, audio is automatically transcribed in 10-minute chunks so nothing is lost. Results appear in your notepad as they're ready.</p>
+    <p><b>Video meetings:</b> Works great for capturing meeting notes. If your mic picks up both sides of the conversation, the full discussion is transcribed.</p>
+    <p><b>Privacy:</b> Audio is sent directly to your provider — nothing passes through or is stored by Snackbar.</p>
+  `;
+  transcriptionSection.appendChild(transcriptionHelp);
+
   const providerField = document.createElement('div');
   providerField.className = 'settings-terminal-field';
   providerField.innerHTML = `
@@ -2934,6 +2944,31 @@ async function renderDailyNotepad() {
       });
       toolbar.appendChild(recBtn);
     }
+
+    // Help button
+    const helpBtn = document.createElement('button');
+    helpBtn.className = 'notepad-mic-help';
+    helpBtn.title = 'How voice recording works';
+    helpBtn.appendChild(createLucideIcon('circle-help', 14));
+    helpBtn.addEventListener('click', () => {
+      const existing = $content.querySelector('.recording-help-panel');
+      if (existing) { existing.remove(); return; }
+      const panel = document.createElement('div');
+      panel.className = 'recording-help-panel';
+      panel.innerHTML = `
+        <strong>Voice Recording</strong>
+        <p>Click <b>Record</b> to capture audio from your microphone and transcribe it to text using AI.</p>
+        <p>For <b>long recordings</b> (meetings, lectures), audio is automatically transcribed every 10 minutes so you don't lose anything. Click <b>Stop</b> to transcribe the remaining audio.</p>
+        <p><b>Video meetings:</b> If your mic picks up both sides of the conversation (e.g. speakers + mic on the same device), the full discussion will be transcribed — great for meeting notes.</p>
+        <p>Set up your transcription provider and API key in <a href="#" class="recording-help-settings-link">Settings</a>. Your audio is sent directly to your chosen provider — nothing is stored by Snackbar.</p>
+      `;
+      panel.querySelector('.recording-help-settings-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        renderSettings();
+      });
+      toolbar.after(panel);
+    });
+    toolbar.appendChild(helpBtn);
   }
 
   $content.appendChild(toolbar);
