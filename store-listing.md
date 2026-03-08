@@ -16,7 +16,7 @@ Create a space for every project, client, or area of focus. Inside each space, s
 Right-click any saved link to attach notes and login credentials. Keep project context — URLs, usernames, passwords, and reference notes — all in one place.
 
 **Notes & Todos**
-Every workspace gets its own collection of notes and todo lists. Pin important ones to the top. There's also a daily notepad with voice transcription for quick capture — just hit the mic and talk.
+Every workspace gets its own collection of notes and todo lists. Pin important ones to the top. There's also a daily notepad for quick capture throughout the day.
 
 **Visual Focus Timer**
 Set any countdown or use the stopwatch. A circular progress ring keeps time visible — no need to check the clock. Visual timers are especially helpful for ADHD brains that lose track of time. Snackbar also tracks which sites you visit during each session, so you can see where focus actually went.
@@ -33,14 +33,21 @@ Switch spaces (1-9), jump to views (T/N/C), start/stop timers (F) — all withou
 **Privacy & Your Data**
 Snackbar doesn't have a server. Your data lives on your computer in Chrome's local storage — that's it. If you want backup or sync across devices, you can connect your own Google Drive. Your data goes straight from your browser to your Drive — we never see it, store it, or touch it. You're in complete control.
 
+**Voice Transcription**
+Record meetings, lectures, or just your own thoughts — right from the notepad. Audio is transcribed using your choice of provider (Groq, OpenAI, or your own self-hosted endpoint). Long recordings are automatically chunked every 10 minutes so nothing is lost. Your API key stays local; audio goes directly to your provider.
+
 **App Links**
 Open projects directly in your editor or terminal from the sidebar. Enable VS Code, Cursor, or any of 7 supported terminals, set your projects folder, and launch with one click. Terminal support uses Hatch, a free open-source helper app for macOS.
+
+**Notes Export**
+Export your daily notes and workspace notes as .txt files to Google Drive or a self-hosted Nextcloud server. Files are organized by space and updated in place — no duplicates.
 
 **More**
 - Works on Windows, Mac, and Linux
 - Light, dark, and system theme
 - Drag-and-drop sorting for spaces, links, and groups
-- Toggle features on/off in settings
-- Export & import your data
+- Toggle features on/off in clean, organized settings
+- Export & import your data as JSON
+- Cloud sync via Google Drive
 
 Built by Diviner — diviner.agency

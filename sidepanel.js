@@ -238,6 +238,7 @@ const DEFAULT_STATE = {
 // ── State ──
 
 let currentView = 'spaces'; // which panel is shown in the content area
+let settingsSubPanel = null; // null | 'app-links' | 'transcription' | 'notes-export'
 
 // Feature toggles (persisted to storage; control rail icon visibility)
 let features = {
@@ -271,6 +272,7 @@ function getEnabledApps() {
 
 // Transcription config — user provides their own API key
 let transcriptionConfig = {
+  enabled: false,   // whether mic button shows on notepad
   provider: 'groq', // 'groq', 'openai', or 'custom'
   apiKey: '',
   maxMinutes: 60, // auto-stop after 60 or 120 minutes
@@ -392,6 +394,7 @@ async function saveAppLinksConfig() {
 // ── Notes Export Config ──
 
 let notesExportConfig = {
+  enabled: false, // whether cloud save buttons show on notepad
   googleDrive: false,
   nextcloud: { enabled: false, url: '', username: '', password: '' }
 };
@@ -399,6 +402,7 @@ let notesExportConfig = {
 async function loadNotesExportConfig() {
   const { notesExportConfig: saved } = await chrome.storage.local.get('notesExportConfig');
   if (saved) {
+    notesExportConfig.enabled = !!saved.enabled;
     notesExportConfig.googleDrive = !!saved.googleDrive;
     if (saved.nextcloud) Object.assign(notesExportConfig.nextcloud, saved.nextcloud);
   }
@@ -1028,6 +1032,7 @@ function renderRail() {
   settingsBtn.tabIndex = 0;
   settingsBtn.addEventListener('click', () => {
     currentView = currentView === 'settings' ? 'spaces' : 'settings';
+    settingsSubPanel = null;
     render();
   });
   $rail.appendChild(settingsBtn);
@@ -1085,7 +1090,7 @@ function createViewTitleRow(label) {
   backBtn.className = 'settings-back-btn';
   backBtn.setAttribute('aria-label', 'Back to spaces');
   backBtn.appendChild(createLucideIcon('arrow-left', 16));
-  backBtn.addEventListener('click', () => { currentView = 'spaces'; render(); });
+  backBtn.addEventListener('click', () => { currentView = 'spaces'; settingsSubPanel = null; render(); });
   row.appendChild(backBtn);
   const title = document.createElement('div');
   title.className = 'settings-title';
@@ -1484,242 +1489,504 @@ function createLinkElement(link, groupId) {
 
 // ── Settings View ──
 
-/** Renders the full settings page: feature toggles, app links, theme, shortcuts, sync, and data. */
+/** Renders the settings page — main panel or a sub-panel depending on settingsSubPanel. */
 function renderSettingsView() {
-  $content.innerHTML = '';
+  if (settingsSubPanel === 'app-links') return renderSettingsAppLinks();
+  if (settingsSubPanel === 'transcription') return renderSettingsTranscription();
+  if (settingsSubPanel === 'notes-export') return renderSettingsNotesExport();
+  renderSettingsMain();
+}
 
+/** Helper: creates a settings section with a label. */
+function createSettingsSection(label) {
+  const section = document.createElement('div');
+  section.className = 'settings-section';
+  const lbl = document.createElement('div');
+  lbl.className = 'settings-section-label';
+  lbl.textContent = label;
+  section.appendChild(lbl);
+  return section;
+}
+
+/** Helper: creates a toggle row with icon, label, description, and optional gear button. */
+function createToggleRow(icon, label, desc, checked, onChange, onGear) {
+  const row = document.createElement('div');
+  row.className = 'settings-row';
+
+  const left = document.createElement('div');
+  left.className = 'settings-row-info';
+  const iconEl = createLucideIcon(icon, 16);
+  iconEl.style.flexShrink = '0';
+  left.appendChild(iconEl);
+  const text = document.createElement('div');
+  const nameEl = document.createElement('div');
+  nameEl.className = 'settings-row-label';
+  nameEl.textContent = label;
+  text.appendChild(nameEl);
+  const descEl = document.createElement('div');
+  descEl.className = 'settings-row-desc';
+  descEl.textContent = desc;
+  text.appendChild(descEl);
+  left.appendChild(text);
+  row.appendChild(left);
+
+  const right = document.createElement('div');
+  right.className = 'settings-row-actions';
+
+  const toggle = document.createElement('label');
+  toggle.className = 'settings-toggle';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = checked;
+  input.addEventListener('change', () => onChange(input.checked));
+  const slider = document.createElement('span');
+  slider.className = 'settings-slider';
+  toggle.appendChild(input);
+  toggle.appendChild(slider);
+  right.appendChild(toggle);
+
+  if (onGear) {
+    const gearBtn = document.createElement('button');
+    gearBtn.className = 'settings-gear-btn';
+    gearBtn.setAttribute('aria-label', 'Configure ' + label);
+    gearBtn.appendChild(createLucideIcon('settings', 14));
+    gearBtn.addEventListener('click', (e) => { e.stopPropagation(); onGear(); });
+    right.appendChild(gearBtn);
+  }
+
+  row.appendChild(right);
+  return row;
+}
+
+/** Helper: creates a navigable row (click to open sub-panel) with icon, label, status, and chevron. */
+function createNavRow(icon, label, status, onClick) {
+  const row = document.createElement('div');
+  row.className = 'settings-row settings-nav-row';
+  row.addEventListener('click', onClick);
+
+  const left = document.createElement('div');
+  left.className = 'settings-row-info';
+  const iconEl = createLucideIcon(icon, 16);
+  iconEl.style.flexShrink = '0';
+  left.appendChild(iconEl);
+  const text = document.createElement('div');
+  const nameEl = document.createElement('div');
+  nameEl.className = 'settings-row-label';
+  nameEl.textContent = label;
+  text.appendChild(nameEl);
+  const descEl = document.createElement('div');
+  descEl.className = 'settings-row-desc';
+  descEl.textContent = status;
+  text.appendChild(descEl);
+  left.appendChild(text);
+  row.appendChild(left);
+
+  const chevron = createLucideIcon('chevron-right', 16);
+  chevron.style.flexShrink = '0';
+  chevron.style.color = 'var(--text-secondary)';
+  row.appendChild(chevron);
+
+  return row;
+}
+
+/** Helper: creates a sub-panel title row with a back button that returns to the main settings page.
+ *  Optional onBack callback runs before navigating back (e.g. to disable toggle if config is incomplete). */
+function createSettingsBackTitle(label, onBack) {
+  const row = document.createElement('div');
+  row.className = 'settings-title-row';
+  const backBtn = document.createElement('button');
+  backBtn.className = 'settings-back-btn';
+  backBtn.setAttribute('aria-label', 'Back to settings');
+  backBtn.appendChild(createLucideIcon('arrow-left', 16));
+  backBtn.addEventListener('click', () => {
+    if (onBack) onBack();
+    settingsSubPanel = null;
+    renderSettingsView();
+  });
+  row.appendChild(backBtn);
+  const title = document.createElement('div');
+  title.className = 'settings-title';
+  title.textContent = label;
+  row.appendChild(title);
+  return row;
+}
+
+/** Main settings page: clean toggle list with gear icons for configurable features. */
+function renderSettingsMain() {
+  $content.innerHTML = '';
   const wrap = document.createElement('div');
   wrap.className = 'settings-view';
 
   wrap.appendChild(createViewTitleRow('Settings'));
 
-  // Features section
-  const featSection = document.createElement('div');
-  featSection.className = 'settings-section';
-  const featLabel = document.createElement('div');
-  featLabel.className = 'settings-section-label';
-  featLabel.textContent = 'Features';
-  featSection.appendChild(featLabel);
-
+  // Features section — simple on/off toggles
+  const featSection = createSettingsSection('Features');
   const featureList = [
     { key: 'activity', label: 'Activity Tracker', desc: 'Track time spent on websites', icon: 'clock' },
     { key: 'notepad', label: 'Notepad', desc: 'Daily notes and workspace notes', icon: 'file-text' },
     { key: 'calendar', label: 'Calendar', desc: 'Google Calendar integration', icon: 'calendar' },
     { key: 'focusTimer', label: 'Focus Timer', desc: 'Countdown timer with site tracking', icon: 'target' },
   ];
-
   featureList.forEach(({ key, label, desc, icon }) => {
-    const row = document.createElement('div');
-    row.className = 'settings-row';
-
-    const left = document.createElement('div');
-    left.className = 'settings-row-info';
-    const iconEl = createLucideIcon(icon, 16);
-    iconEl.style.flexShrink = '0';
-    left.appendChild(iconEl);
-    const text = document.createElement('div');
-    const nameEl = document.createElement('div');
-    nameEl.className = 'settings-row-label';
-    nameEl.textContent = label;
-    text.appendChild(nameEl);
-    const descEl = document.createElement('div');
-    descEl.className = 'settings-row-desc';
-    descEl.textContent = desc;
-    text.appendChild(descEl);
-    left.appendChild(text);
-    row.appendChild(left);
-
-    const toggle = document.createElement('label');
-    toggle.className = 'settings-toggle';
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.checked = features[key];
-    input.addEventListener('change', async () => {
-      features[key] = input.checked;
+    featSection.appendChild(createToggleRow(icon, label, desc, features[key], async (checked) => {
+      features[key] = checked;
       await saveFeatures();
       render();
-    });
-    const slider = document.createElement('span');
-    slider.className = 'settings-slider';
-    toggle.appendChild(input);
-    toggle.appendChild(slider);
-    row.appendChild(toggle);
-
-    featSection.appendChild(row);
+    }));
   });
-
   wrap.appendChild(featSection);
 
-  // App Links section
-  const appSection = document.createElement('div');
-  appSection.className = 'settings-section';
-  const appLabel = document.createElement('div');
-  appLabel.className = 'settings-section-label';
-  appLabel.textContent = 'App Links';
-  appSection.appendChild(appLabel);
+  // Integrations section — toggles + gear or navigable rows
+  const intSection = createSettingsSection('Integrations');
 
-  const appRow = document.createElement('div');
-  appRow.className = 'settings-row';
-  const appInfo = document.createElement('div');
-  appInfo.className = 'settings-row-info';
-  const appIcon = createLucideIcon('rocket', 18);
-  appInfo.appendChild(appIcon);
-  const appText = document.createElement('div');
-  const appRowLabel = document.createElement('div');
-  appRowLabel.className = 'settings-row-label';
-  appRowLabel.textContent = 'Enable app links';
-  appText.appendChild(appRowLabel);
-  const appRowDesc = document.createElement('div');
-  appRowDesc.className = 'settings-row-desc';
-  appRowDesc.textContent = 'Open projects in editors, terminals, and other apps';
-  appText.appendChild(appRowDesc);
-  appInfo.appendChild(appText);
-  appRow.appendChild(appInfo);
-  const appToggle = document.createElement('label');
-  appToggle.className = 'settings-toggle';
-  appToggle.innerHTML = `<input type="checkbox" ${appLinksConfig.enabled ? 'checked' : ''}><span class="settings-slider"></span>`;
-  appToggle.querySelector('input').addEventListener('change', async (e) => {
-    appLinksConfig.enabled = e.target.checked;
+  // App Links: toggle + gear
+  intSection.appendChild(createToggleRow('rocket', 'App Links', 'Open projects in editors and terminals', appLinksConfig.enabled, async (checked) => {
+    appLinksConfig.enabled = checked;
     await saveAppLinksConfig();
-    renderSettingsView();
-  });
-  appRow.appendChild(appToggle);
-  appSection.appendChild(appRow);
-
-  if (appLinksConfig.enabled) {
-    // Base path
-    const baseField = document.createElement('div');
-    baseField.className = 'settings-terminal-field';
-    baseField.innerHTML = `
-      <label class="settings-row-label">Base path</label>
-      <div class="settings-row-desc" style="margin-bottom:6px">Your projects folder. Paths in app links will be relative to this.</div>
-      <input type="text" class="settings-terminal-input" value="${escapeHtml(appLinksConfig.basePath)}" placeholder="/Users/you/projects/">
-    `;
-    baseField.querySelector('input').addEventListener('change', async (e) => {
-      let val = e.target.value.trim();
-      if (val && !val.endsWith('/')) val += '/';
-      appLinksConfig.basePath = val;
-      await saveAppLinksConfig();
-    });
-    appSection.appendChild(baseField);
-
-    // Helper to render a group of app preset checkboxes
-    function renderAppCheckboxes(container, presets) {
-      const list = document.createElement('div');
-      list.className = 'settings-apps-list';
-      presets.forEach(preset => {
-        const row = document.createElement('label');
-        row.className = 'settings-app-row';
-        row.style.cursor = 'pointer';
-        const isOn = appLinksConfig.enabledApps.includes(preset.id);
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = isOn;
-        cb.style.marginRight = '8px';
-        cb.addEventListener('change', async (e) => {
-          if (e.target.checked) {
-            appLinksConfig.enabledApps.push(preset.id);
-          } else {
-            appLinksConfig.enabledApps = appLinksConfig.enabledApps.filter(id => id !== preset.id);
-          }
-          await saveAppLinksConfig();
-        });
-        row.appendChild(cb);
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'settings-app-name';
-        nameSpan.textContent = preset.name;
-        row.appendChild(nameSpan);
-        list.appendChild(row);
-      });
-      container.appendChild(list);
+    if (checked && !appLinksConfig.basePath) {
+      settingsSubPanel = 'app-links';
+      renderSettingsView();
+    } else {
+      renderSettingsView();
     }
+  }, () => { settingsSubPanel = 'app-links'; renderSettingsView(); }));
 
-    // Editors section
-    const editorsField = document.createElement('div');
-    editorsField.className = 'settings-terminal-field';
-    editorsField.style.marginTop = '12px';
-    const editorsLabel = document.createElement('label');
-    editorsLabel.className = 'settings-row-label';
-    editorsLabel.textContent = 'Editors';
-    editorsField.appendChild(editorsLabel);
-    const editorsDesc = document.createElement('div');
-    editorsDesc.className = 'settings-row-desc';
-    editorsDesc.style.marginBottom = '8px';
-    editorsDesc.textContent = 'Open files and folders in your editor. Works automatically if the app is installed.';
-    editorsField.appendChild(editorsDesc);
-    renderAppCheckboxes(editorsField, APP_PRESETS.filter(p => p.type === 'editor'));
-    appSection.appendChild(editorsField);
+  // Voice Transcription: toggle + gear
+  const transDesc = transcriptionConfig.apiKey
+    ? (transcriptionConfig.provider === 'groq' ? 'Groq' : transcriptionConfig.provider === 'openai' ? 'OpenAI' : 'Custom endpoint')
+    : 'Not configured';
+  intSection.appendChild(createToggleRow('mic', 'Voice Transcription', transDesc, transcriptionConfig.enabled, async (checked) => {
+    transcriptionConfig.enabled = checked;
+    await saveTranscriptionConfig();
+    if (checked && !transcriptionConfig.apiKey) {
+      settingsSubPanel = 'transcription';
+      renderSettingsView();
+    } else {
+      renderSettingsView();
+    }
+  }, () => { settingsSubPanel = 'transcription'; renderSettingsView(); }));
 
-    // Terminals section
-    const terminalsField = document.createElement('div');
-    terminalsField.className = 'settings-terminal-field';
-    terminalsField.style.marginTop = '12px';
-    const terminalsLabel = document.createElement('label');
-    terminalsLabel.className = 'settings-row-label';
-    terminalsLabel.textContent = 'Terminals';
-    terminalsField.appendChild(terminalsLabel);
-    const terminalsDesc = document.createElement('div');
-    terminalsDesc.className = 'settings-row-desc';
-    terminalsDesc.style.marginBottom = '8px';
-    terminalsDesc.textContent = 'Open a terminal in any project folder — great for CLI tools like Claude Code.';
-    terminalsField.appendChild(terminalsDesc);
+  // Notes Export: toggle + gear
+  const exportTargets = [];
+  if (notesExportConfig.googleDrive) exportTargets.push('Google Drive');
+  if (notesExportConfig.nextcloud.enabled) exportTargets.push('Nextcloud');
+  const exportDesc = exportTargets.length ? exportTargets.join(' + ') : 'Not configured';
+  intSection.appendChild(createToggleRow('upload', 'Notes Export', exportDesc, notesExportConfig.enabled, async (checked) => {
+    notesExportConfig.enabled = checked;
+    await saveNotesExportConfig();
+    if (checked && !notesExportConfig.googleDrive && !notesExportConfig.nextcloud.enabled) {
+      settingsSubPanel = 'notes-export';
+      renderSettingsView();
+    } else {
+      renderSettingsView();
+    }
+  }, () => { settingsSubPanel = 'notes-export'; renderSettingsView(); }));
 
-    // Terminal setup callout (before checkboxes)
-    const setupNote = document.createElement('div');
-    setupNote.className = 'settings-setup-callout';
-    setupNote.innerHTML = `
-      ${createLucideIcon('info', 14).outerHTML}
-      <div>
-        <strong>One-time setup required</strong>
-        <div class="settings-row-desc" style="margin-top:2px">Terminals need <strong>Hatch</strong>, a free helper app for macOS, to handle <code>terminal://</code> links. <a href="https://github.com/nerves76/hatch" target="_blank">Get Hatch</a></div>
-      </div>
-    `;
-    terminalsField.appendChild(setupNote);
+  wrap.appendChild(intSection);
 
-    renderAppCheckboxes(terminalsField, APP_PRESETS.filter(p => p.type === 'terminal'));
+  // Theme section
+  const themeSection = createSettingsSection('Theme');
+  const themeRow = document.createElement('div');
+  themeRow.className = 'settings-theme-row';
+  ['system', 'light', 'dark'].forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'settings-theme-btn' + (currentTheme === t ? ' active' : '');
+    btn.appendChild(createLucideIcon(t === 'light' ? 'sun' : t === 'dark' ? 'moon' : 'settings', 16));
+    const lbl = document.createElement('span');
+    lbl.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+    btn.appendChild(lbl);
+    btn.addEventListener('click', async () => {
+      currentTheme = t;
+      document.documentElement.setAttribute('data-theme', t);
+      await chrome.storage.local.set({ theme: t });
+      renderSettingsView();
+    });
+    themeRow.appendChild(btn);
+  });
+  themeSection.appendChild(themeRow);
+  wrap.appendChild(themeSection);
 
-    appSection.appendChild(terminalsField);
+  // Keyboard shortcuts
+  const kbSection = createSettingsSection('Keyboard Shortcuts');
+  const shortcuts = [
+    ['1 – 9', 'Switch workspace'],
+    ['T', 'Activity tracker'],
+    ['N', 'Notepad'],
+    ['C', 'Calendar'],
+    ['F', 'Start/stop focus timer'],
+    ['Esc', 'Back to workspaces'],
+  ];
+  shortcuts.forEach(([key, desc]) => {
+    const row = document.createElement('div');
+    row.className = 'settings-shortcut';
+    const kbd = document.createElement('kbd');
+    kbd.textContent = key;
+    row.appendChild(kbd);
+    const descEl = document.createElement('span');
+    descEl.textContent = desc;
+    row.appendChild(descEl);
+    kbSection.appendChild(row);
+  });
+  wrap.appendChild(kbSection);
 
-    // Tip for custom schemes
-    const tip = document.createElement('div');
-    tip.className = 'settings-row-desc';
-    tip.style.marginTop = '12px';
-    tip.style.padding = '0 2px';
-    tip.textContent = 'For other apps, paste the full URL (e.g. figma://file/abc) directly in the URL field.';
-    appSection.appendChild(tip);
+  // Sync section
+  const syncSection = createSettingsSection('Sync');
+  const syncDesc = document.createElement('div');
+  syncDesc.className = 'settings-row-desc';
+  syncDesc.style.marginBottom = '8px';
+  syncDesc.textContent = 'Sync your data across devices using Google Drive. Your data is stored privately in an app-only folder.';
+  syncSection.appendChild(syncDesc);
+
+  const syncBtn = document.createElement('button');
+  syncBtn.className = 'settings-sync-btn';
+  syncBtn.innerHTML = createLucideIcon('cloud', 16).outerHTML + '<span>Sync now</span>';
+  syncBtn.addEventListener('click', async () => {
+    syncBtn.disabled = true;
+    syncBtn.querySelector('span').textContent = 'Syncing...';
+    try {
+      const result = await syncToCloud();
+      exportNotesToCloud().catch(e => console.warn('Background notes export failed:', e));
+      syncBtn.querySelector('span').textContent = result === 'pulled' ? 'Updated from cloud' : 'Backed up to cloud';
+      const statusEl = syncSection.querySelector('.settings-sync-status');
+      if (statusEl) statusEl.textContent = 'Last synced: just now';
+    } catch (e) {
+      syncBtn.querySelector('span').textContent = 'Sync failed';
+      console.error('Sync error:', e);
+    }
+    syncBtn.disabled = false;
+    setTimeout(() => {
+      syncBtn.innerHTML = createLucideIcon('cloud', 16).outerHTML + '<span>Sync now</span>';
+    }, 2500);
+  });
+  syncSection.appendChild(syncBtn);
+
+  const syncStatus = document.createElement('div');
+  syncStatus.className = 'settings-sync-status';
+  chrome.storage.local.get('lastSyncedAt').then(({ lastSyncedAt }) => {
+    if (lastSyncedAt) {
+      const d = new Date(lastSyncedAt);
+      syncStatus.textContent = 'Last synced: ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    } else {
+      syncStatus.textContent = 'Never synced';
+    }
+  });
+  syncSection.appendChild(syncStatus);
+  wrap.appendChild(syncSection);
+
+  // Data section
+  const dataSection = createSettingsSection('Data');
+
+  const exportBtn = document.createElement('button');
+  exportBtn.className = 'settings-action-btn';
+  exportBtn.textContent = 'Export all data (JSON)';
+  exportBtn.addEventListener('click', async () => {
+    const data = await chrome.storage.local.get(null);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `snackbar-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  dataSection.appendChild(exportBtn);
+
+  const importBtn = document.createElement('button');
+  importBtn.className = 'settings-action-btn';
+  importBtn.textContent = 'Import data (JSON)';
+  importBtn.addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        await chrome.storage.local.set(data);
+        await loadState();
+        await loadFeatures();
+        await applyTheme();
+        render();
+      } catch {
+        importBtn.textContent = 'Import failed — invalid file';
+        setTimeout(() => { importBtn.textContent = 'Import data (JSON)'; }, 2000);
+      }
+    });
+    input.click();
+  });
+  dataSection.appendChild(importBtn);
+  wrap.appendChild(dataSection);
+
+  // About
+  const about = document.createElement('div');
+  about.className = 'settings-about';
+  about.innerHTML = `
+    <div class="settings-version">Snackbar v1.0</div>
+    <div class="settings-byline">by <a href="#" id="settingsDivinerLink">Diviner</a></div>
+    <p class="settings-blurb">Built for people who struggle with context switching and staying on task. Visual timers help you see time passing — not just know it's passing. Session tracking shows exactly where your focus went, so you can bill hours accurately or just understand your own patterns.</p>
+    <a href="#" id="settingsSupportLink" class="settings-support-link">${createLucideIcon('heart', 14).outerHTML} Support Snackbar</a>
+  `;
+  about.querySelector('#settingsDivinerLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: 'https://diviner.agency' });
+  });
+  about.querySelector('#settingsSupportLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: 'https://ko-fi.com/divinerone' });
+  });
+  wrap.appendChild(about);
+
+  $content.appendChild(wrap);
+}
+
+/** Sub-panel: App Links configuration. */
+function renderSettingsAppLinks() {
+  $content.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'settings-view';
+
+  wrap.appendChild(createSettingsBackTitle('App Links', async () => {
+    if (appLinksConfig.enabled && !appLinksConfig.basePath && appLinksConfig.enabledApps.length === 0) {
+      appLinksConfig.enabled = false;
+      await saveAppLinksConfig();
+    }
+  }));
+
+  // Base path
+  const baseField = document.createElement('div');
+  baseField.className = 'settings-terminal-field';
+  baseField.innerHTML = `
+    <label class="settings-row-label">Base path</label>
+    <div class="settings-row-desc" style="margin-bottom:6px">Your projects folder. Paths in app links will be relative to this.</div>
+    <input type="text" class="settings-terminal-input" value="${escapeHtml(appLinksConfig.basePath)}" placeholder="/Users/you/projects/">
+  `;
+  baseField.querySelector('input').addEventListener('change', async (e) => {
+    let val = e.target.value.trim();
+    if (val && !val.endsWith('/')) val += '/';
+    appLinksConfig.basePath = val;
+    await saveAppLinksConfig();
+  });
+  wrap.appendChild(baseField);
+
+  // Helper to render a group of app preset checkboxes
+  function renderAppCheckboxes(container, presets) {
+    const list = document.createElement('div');
+    list.className = 'settings-apps-list';
+    presets.forEach(preset => {
+      const row = document.createElement('label');
+      row.className = 'settings-app-row';
+      row.style.cursor = 'pointer';
+      const isOn = appLinksConfig.enabledApps.includes(preset.id);
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = isOn;
+      cb.style.marginRight = '8px';
+      cb.addEventListener('change', async (e) => {
+        if (e.target.checked) {
+          appLinksConfig.enabledApps.push(preset.id);
+        } else {
+          appLinksConfig.enabledApps = appLinksConfig.enabledApps.filter(id => id !== preset.id);
+        }
+        await saveAppLinksConfig();
+      });
+      row.appendChild(cb);
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'settings-app-name';
+      nameSpan.textContent = preset.name;
+      row.appendChild(nameSpan);
+      list.appendChild(row);
+    });
+    container.appendChild(list);
   }
 
-  wrap.appendChild(appSection);
+  // Editors section
+  const editorsField = document.createElement('div');
+  editorsField.className = 'settings-terminal-field';
+  const editorsLabel = document.createElement('label');
+  editorsLabel.className = 'settings-row-label';
+  editorsLabel.textContent = 'Editors';
+  editorsField.appendChild(editorsLabel);
+  const editorsDesc = document.createElement('div');
+  editorsDesc.className = 'settings-row-desc';
+  editorsDesc.style.marginBottom = '8px';
+  editorsDesc.textContent = 'Open files and folders in your editor. Works automatically if the app is installed.';
+  editorsField.appendChild(editorsDesc);
+  renderAppCheckboxes(editorsField, APP_PRESETS.filter(p => p.type === 'editor'));
+  wrap.appendChild(editorsField);
 
-  // Transcription section
-  const transcriptionSection = document.createElement('div');
-  transcriptionSection.className = 'settings-section';
-  const transcriptionLabel = document.createElement('div');
-  transcriptionLabel.className = 'settings-section-label';
-  transcriptionLabel.textContent = 'Voice Transcription';
-  transcriptionSection.appendChild(transcriptionLabel);
+  // Terminals section
+  const terminalsField = document.createElement('div');
+  terminalsField.className = 'settings-terminal-field';
+  const terminalsLabel = document.createElement('label');
+  terminalsLabel.className = 'settings-row-label';
+  terminalsLabel.textContent = 'Terminals';
+  terminalsField.appendChild(terminalsLabel);
+  const terminalsDesc = document.createElement('div');
+  terminalsDesc.className = 'settings-row-desc';
+  terminalsDesc.style.marginBottom = '8px';
+  terminalsDesc.textContent = 'Open a terminal in any project folder — great for CLI tools like Claude Code.';
+  terminalsField.appendChild(terminalsDesc);
 
-  const transcriptionDesc = document.createElement('div');
-  transcriptionDesc.className = 'settings-row-desc';
-  transcriptionDesc.style.marginBottom = '8px';
-  transcriptionDesc.textContent = 'Add an API key to enable the mic button on your daily notepad. Your key is stored locally.';
-  transcriptionSection.appendChild(transcriptionDesc);
+  const setupNote = document.createElement('div');
+  setupNote.className = 'settings-setup-callout';
+  setupNote.innerHTML = `
+    ${createLucideIcon('info', 14).outerHTML}
+    <div>
+      <strong>One-time setup required</strong>
+      <div class="settings-row-desc" style="margin-top:2px">Terminals need <strong>Hatch</strong>, a free helper app for macOS, to handle <code>terminal://</code> links. <a href="https://github.com/nerves76/hatch" target="_blank">Get Hatch</a></div>
+    </div>
+  `;
+  terminalsField.appendChild(setupNote);
+  renderAppCheckboxes(terminalsField, APP_PRESETS.filter(p => p.type === 'terminal'));
+  wrap.appendChild(terminalsField);
 
-  const transcriptionHelp = document.createElement('div');
-  transcriptionHelp.className = 'settings-transcription-help';
-  transcriptionHelp.innerHTML = `
+  // Tip for custom schemes
+  const tip = document.createElement('div');
+  tip.className = 'settings-row-desc';
+  tip.style.marginTop = '12px';
+  tip.style.padding = '0 2px';
+  tip.textContent = 'For other apps, paste the full URL (e.g. figma://file/abc) directly in the URL field.';
+  wrap.appendChild(tip);
+
+  $content.appendChild(wrap);
+}
+
+/** Sub-panel: Voice Transcription configuration. */
+function renderSettingsTranscription() {
+  $content.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'settings-view';
+
+  wrap.appendChild(createSettingsBackTitle('Voice Transcription', async () => {
+    if (transcriptionConfig.enabled && !transcriptionConfig.apiKey) {
+      transcriptionConfig.enabled = false;
+      await saveTranscriptionConfig();
+    }
+  }));
+
+  const desc = document.createElement('div');
+  desc.className = 'settings-row-desc';
+  desc.style.marginBottom = '12px';
+  desc.textContent = 'Add an API key to enable the mic button on your daily notepad. Your key is stored locally.';
+  wrap.appendChild(desc);
+
+  const helpPanel = document.createElement('div');
+  helpPanel.className = 'settings-transcription-help';
+  helpPanel.innerHTML = `
     <p><b>How it works:</b> Click Record on your daily notepad to capture audio from your microphone. When you stop, the audio is sent to your chosen provider for transcription.</p>
     <p><b>Long recordings:</b> For meetings or lectures, audio is automatically transcribed in 10-minute chunks so nothing is lost. Results appear in your notepad as they're ready.</p>
     <p><b>Video meetings:</b> Works great for capturing meeting notes. If your mic picks up both sides of the conversation, the full discussion is transcribed.</p>
     <p><b>Privacy:</b> Audio is sent directly to your provider — nothing passes through or is stored by Snackbar.</p>
   `;
-  transcriptionSection.appendChild(transcriptionHelp);
+  wrap.appendChild(helpPanel);
 
   const providerField = document.createElement('div');
   providerField.className = 'settings-terminal-field';
   providerField.innerHTML = `
     <label class="settings-row-label">Provider</label>
-    <select class="settings-terminal-input" id="transcriptionProvider">
+    <select class="settings-terminal-input">
       <option value="groq" ${transcriptionConfig.provider === 'groq' ? 'selected' : ''}>Groq (free)</option>
       <option value="openai" ${transcriptionConfig.provider === 'openai' ? 'selected' : ''}>OpenAI</option>
       <option value="custom" ${transcriptionConfig.provider === 'custom' ? 'selected' : ''}>Custom endpoint</option>
@@ -1731,7 +1998,7 @@ function renderSettingsView() {
     customFields.style.display = e.target.value === 'custom' ? 'block' : 'none';
     keyTip.style.display = e.target.value === 'custom' ? 'none' : 'block';
   });
-  transcriptionSection.appendChild(providerField);
+  wrap.appendChild(providerField);
 
   const keyField = document.createElement('div');
   keyField.className = 'settings-terminal-field';
@@ -1744,9 +2011,9 @@ function renderSettingsView() {
     transcriptionConfig.apiKey = e.target.value.trim();
     await saveTranscriptionConfig();
   });
-  transcriptionSection.appendChild(keyField);
+  wrap.appendChild(keyField);
 
-  // Custom endpoint fields (shown only when provider is 'custom')
+  // Custom endpoint fields
   const customFields = document.createElement('div');
   customFields.style.display = transcriptionConfig.provider === 'custom' ? 'block' : 'none';
 
@@ -1775,15 +2042,14 @@ function renderSettingsView() {
     await saveTranscriptionConfig();
   });
   customFields.appendChild(modelField);
-
-  transcriptionSection.appendChild(customFields);
+  wrap.appendChild(customFields);
 
   const maxField = document.createElement('div');
   maxField.className = 'settings-terminal-field';
   maxField.style.marginTop = '8px';
   maxField.innerHTML = `
     <label class="settings-row-label">Auto-stop recording</label>
-    <select class="settings-terminal-input" id="transcriptionMaxMinutes">
+    <select class="settings-terminal-input">
       <option value="60" ${transcriptionConfig.maxMinutes === 60 ? 'selected' : ''}>After 1 hour</option>
       <option value="120" ${transcriptionConfig.maxMinutes === 120 ? 'selected' : ''}>After 2 hours</option>
     </select>
@@ -1792,222 +2058,65 @@ function renderSettingsView() {
     transcriptionConfig.maxMinutes = parseInt(e.target.value);
     await saveTranscriptionConfig();
   });
-  transcriptionSection.appendChild(maxField);
+  wrap.appendChild(maxField);
 
   const keyTip = document.createElement('div');
   keyTip.className = 'settings-row-desc';
   keyTip.style.marginTop = '6px';
   keyTip.style.display = transcriptionConfig.provider === 'custom' ? 'none' : 'block';
-  keyTip.innerHTML = 'Get a free key at <a href="#" class="settings-link" id="transcriptionKeyLink">groq.com</a>';
-  transcriptionSection.appendChild(keyTip);
-  // Defer event listener since innerHTML replaces elements
-  setTimeout(() => {
-    const link = document.getElementById('transcriptionKeyLink');
-    if (link) link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const url = transcriptionConfig.provider === 'openai' ? 'https://platform.openai.com/api-keys' : 'https://console.groq.com/keys';
-      chrome.tabs.create({ url });
-    });
+  keyTip.innerHTML = 'Get a free key at <a href="#" class="settings-link">groq.com</a>';
+  keyTip.querySelector('a').addEventListener('click', (e) => {
+    e.preventDefault();
+    const url = transcriptionConfig.provider === 'openai' ? 'https://platform.openai.com/api-keys' : 'https://console.groq.com/keys';
+    chrome.tabs.create({ url });
   });
+  wrap.appendChild(keyTip);
 
-  wrap.appendChild(transcriptionSection);
+  $content.appendChild(wrap);
+}
 
-  // Theme section
-  const themeSection = document.createElement('div');
-  themeSection.className = 'settings-section';
-  const themeLabel = document.createElement('div');
-  themeLabel.className = 'settings-section-label';
-  themeLabel.textContent = 'Theme';
-  themeSection.appendChild(themeLabel);
+/** Sub-panel: Notes Export configuration. */
+function renderSettingsNotesExport() {
+  $content.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'settings-view';
 
-  const themeRow = document.createElement('div');
-  themeRow.className = 'settings-theme-row';
-
-  ['system', 'light', 'dark'].forEach(t => {
-    const btn = document.createElement('button');
-    btn.className = 'settings-theme-btn' + (currentTheme === t ? ' active' : '');
-    btn.appendChild(createLucideIcon(t === 'light' ? 'sun' : t === 'dark' ? 'moon' : 'settings', 16));
-    const lbl = document.createElement('span');
-    lbl.textContent = t.charAt(0).toUpperCase() + t.slice(1);
-    btn.appendChild(lbl);
-    btn.addEventListener('click', async () => {
-      currentTheme = t;
-      document.documentElement.setAttribute('data-theme', t);
-      await chrome.storage.local.set({ theme: t });
-      renderSettingsView();
-    });
-    themeRow.appendChild(btn);
-  });
-
-  themeSection.appendChild(themeRow);
-  wrap.appendChild(themeSection);
-
-  // Keyboard shortcuts section
-  const kbSection = document.createElement('div');
-  kbSection.className = 'settings-section';
-  const kbLabel = document.createElement('div');
-  kbLabel.className = 'settings-section-label';
-  kbLabel.textContent = 'Keyboard Shortcuts';
-  kbSection.appendChild(kbLabel);
-
-  const shortcuts = [
-    ['1 – 9', 'Switch workspace'],
-    ['T', 'Activity tracker'],
-    ['N', 'Notepad'],
-    ['C', 'Calendar'],
-    ['F', 'Start/stop focus timer'],
-    ['Esc', 'Back to workspaces'],
-  ];
-
-  shortcuts.forEach(([key, desc]) => {
-    const row = document.createElement('div');
-    row.className = 'settings-shortcut';
-    const kbd = document.createElement('kbd');
-    kbd.textContent = key;
-    row.appendChild(kbd);
-    const descEl = document.createElement('span');
-    descEl.textContent = desc;
-    row.appendChild(descEl);
-    kbSection.appendChild(row);
-  });
-
-  wrap.appendChild(kbSection);
-
-  // Sync section
-  const syncSection = document.createElement('div');
-  syncSection.className = 'settings-section';
-  const syncLabel = document.createElement('div');
-  syncLabel.className = 'settings-section-label';
-  syncLabel.textContent = 'Sync';
-  syncSection.appendChild(syncLabel);
-
-  const syncDesc = document.createElement('div');
-  syncDesc.className = 'settings-row-desc';
-  syncDesc.style.marginBottom = '8px';
-  syncDesc.textContent = 'Sync your data across devices using Google Drive. Your data is stored privately in an app-only folder.';
-  syncSection.appendChild(syncDesc);
-
-  const syncBtn = document.createElement('button');
-  syncBtn.className = 'settings-sync-btn';
-  syncBtn.innerHTML = createLucideIcon('cloud', 16).outerHTML + '<span>Sync now</span>';
-  syncBtn.addEventListener('click', async () => {
-    syncBtn.disabled = true;
-    syncBtn.querySelector('span').textContent = 'Syncing...';
-    try {
-      const result = await syncToCloud();
-      exportNotesToCloud().catch(e => console.warn('Background notes export failed:', e));
-      syncBtn.querySelector('span').textContent = result === 'pulled' ? 'Updated from cloud' : 'Backed up to cloud';
-      // Update last synced display
-      const statusEl = syncSection.querySelector('.settings-sync-status');
-      if (statusEl) statusEl.textContent = 'Last synced: just now';
-    } catch (e) {
-      syncBtn.querySelector('span').textContent = 'Sync failed';
-      console.error('Sync error:', e);
+  wrap.appendChild(createSettingsBackTitle('Notes Export', async () => {
+    if (notesExportConfig.enabled && !notesExportConfig.googleDrive && !notesExportConfig.nextcloud.enabled) {
+      notesExportConfig.enabled = false;
+      await saveNotesExportConfig();
     }
-    syncBtn.disabled = false;
-    setTimeout(() => {
-      syncBtn.innerHTML = createLucideIcon('cloud', 16).outerHTML + '<span>Sync now</span>';
-    }, 2500);
-  });
-  syncSection.appendChild(syncBtn);
+  }));
 
-  const syncStatus = document.createElement('div');
-  syncStatus.className = 'settings-sync-status';
-  chrome.storage.local.get('lastSyncedAt').then(({ lastSyncedAt }) => {
-    if (lastSyncedAt) {
-      const d = new Date(lastSyncedAt);
-      syncStatus.textContent = 'Last synced: ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    } else {
-      syncStatus.textContent = 'Never synced';
-    }
-  });
-  syncSection.appendChild(syncStatus);
+  const desc = document.createElement('div');
+  desc.className = 'settings-row-desc';
+  desc.style.marginBottom = '12px';
+  desc.textContent = 'Export daily notes and workspace notes as .txt files, organized in folders per space.';
+  wrap.appendChild(desc);
 
-  wrap.appendChild(syncSection);
-
-  // Notes Export section
-  const exportSection = document.createElement('div');
-  exportSection.className = 'settings-section';
-  const exportSectionLabel = document.createElement('div');
-  exportSectionLabel.className = 'settings-section-label';
-  exportSectionLabel.textContent = 'Notes Export';
-  exportSection.appendChild(exportSectionLabel);
-
-  const exportDesc = document.createElement('div');
-  exportDesc.className = 'settings-row-desc';
-  exportDesc.style.marginBottom = '8px';
-  exportDesc.textContent = 'Export daily notes and workspace notes as .txt files, organized in folders per space.';
-  exportSection.appendChild(exportDesc);
-
-  const exportHelp = document.createElement('div');
-  exportHelp.className = 'settings-transcription-help';
-  exportHelp.innerHTML = `
+  const helpPanel = document.createElement('div');
+  helpPanel.className = 'settings-transcription-help';
+  helpPanel.innerHTML = `
     <p><b>How it works:</b> When you click "Export now", all your daily notes and workspace notes are saved as <b>.txt files</b> organized into folders — one per space, plus a "Daily Notes" folder.</p>
     <p><b>Google Drive:</b> Files are saved to a <b>Snackbar</b> folder in your Drive. You sign in with your Google account and Snackbar only has access to files it creates — it can't see anything else in your Drive.</p>
     <p><b>Nextcloud:</b> Files are saved via WebDAV to a <b>Snackbar</b> folder on your server. Use an <b>app password</b> (not your main password) from your Nextcloud security settings for safe, revocable access.</p>
     <p><b>Updates, not duplicates:</b> If a note already exists, it's updated in place. Renamed notes create a new file (the old one stays). Deleted notes are not removed from the cloud — they're kept as an archive.</p>
-    <p><b>This is export, not sync.</b> Notes are pushed to the cloud when you click "Export now". They are not automatically synced or pulled back into Snackbar. Use the Sync feature above for full two-way sync across devices.</p>
+    <p><b>This is export, not sync.</b> Notes are pushed to the cloud when you click "Export now". They are not automatically synced or pulled back into Snackbar. Use the Sync feature for full two-way sync across devices.</p>
   `;
-  exportSection.appendChild(exportHelp);
+  wrap.appendChild(helpPanel);
 
   // Google Drive toggle
-  const driveExRow = document.createElement('div');
-  driveExRow.className = 'settings-row';
-  const driveExInfo = document.createElement('div');
-  driveExInfo.className = 'settings-row-info';
-  const driveExIcon = createLucideIcon('hard-drive', 16);
-  driveExIcon.style.flexShrink = '0';
-  driveExInfo.appendChild(driveExIcon);
-  const driveExText = document.createElement('div');
-  const driveExLabel = document.createElement('div');
-  driveExLabel.className = 'settings-row-label';
-  driveExLabel.textContent = 'Google Drive';
-  driveExText.appendChild(driveExLabel);
-  const driveExDesc = document.createElement('div');
-  driveExDesc.className = 'settings-row-desc';
-  driveExDesc.textContent = 'Save to a Snackbar folder in your Drive';
-  driveExText.appendChild(driveExDesc);
-  driveExInfo.appendChild(driveExText);
-  driveExRow.appendChild(driveExInfo);
-  const driveExToggle = document.createElement('label');
-  driveExToggle.className = 'settings-toggle';
-  driveExToggle.innerHTML = `<input type="checkbox" ${notesExportConfig.googleDrive ? 'checked' : ''}><span class="settings-slider"></span>`;
-  driveExToggle.querySelector('input').addEventListener('change', async (e) => {
-    notesExportConfig.googleDrive = e.target.checked;
+  wrap.appendChild(createToggleRow('hard-drive', 'Google Drive', 'Save to a Snackbar folder in your Drive', notesExportConfig.googleDrive, async (checked) => {
+    notesExportConfig.googleDrive = checked;
     await saveNotesExportConfig();
-  });
-  driveExRow.appendChild(driveExToggle);
-  exportSection.appendChild(driveExRow);
+  }));
 
   // Nextcloud toggle
-  const ncExRow = document.createElement('div');
-  ncExRow.className = 'settings-row';
-  const ncExInfo = document.createElement('div');
-  ncExInfo.className = 'settings-row-info';
-  const ncExIcon = createLucideIcon('cloud', 16);
-  ncExIcon.style.flexShrink = '0';
-  ncExInfo.appendChild(ncExIcon);
-  const ncExText = document.createElement('div');
-  const ncExLabel = document.createElement('div');
-  ncExLabel.className = 'settings-row-label';
-  ncExLabel.textContent = 'Nextcloud';
-  ncExText.appendChild(ncExLabel);
-  const ncExDesc = document.createElement('div');
-  ncExDesc.className = 'settings-row-desc';
-  ncExDesc.textContent = 'Save to a Snackbar folder via WebDAV';
-  ncExText.appendChild(ncExDesc);
-  ncExInfo.appendChild(ncExText);
-  ncExRow.appendChild(ncExInfo);
-  const ncExToggle = document.createElement('label');
-  ncExToggle.className = 'settings-toggle';
-  ncExToggle.innerHTML = `<input type="checkbox" ${notesExportConfig.nextcloud.enabled ? 'checked' : ''}><span class="settings-slider"></span>`;
-  ncExToggle.querySelector('input').addEventListener('change', async (e) => {
-    notesExportConfig.nextcloud.enabled = e.target.checked;
+  wrap.appendChild(createToggleRow('cloud', 'Nextcloud', 'Save to a Snackbar folder via WebDAV', notesExportConfig.nextcloud.enabled, async (checked) => {
+    notesExportConfig.nextcloud.enabled = checked;
     await saveNotesExportConfig();
-    renderSettingsView();
-  });
-  ncExRow.appendChild(ncExToggle);
-  exportSection.appendChild(ncExRow);
+    renderSettingsNotesExport();
+  }));
 
   if (notesExportConfig.nextcloud.enabled) {
     const ncUrlField = document.createElement('div');
@@ -2019,9 +2128,9 @@ function renderSettingsView() {
     ncUrlField.querySelector('input').addEventListener('change', async (e) => {
       notesExportConfig.nextcloud.url = e.target.value.trim();
       await saveNotesExportConfig();
-      renderSettingsView();
+      renderSettingsNotesExport();
     });
-    exportSection.appendChild(ncUrlField);
+    wrap.appendChild(ncUrlField);
 
     const ncUserField = document.createElement('div');
     ncUserField.className = 'settings-terminal-field';
@@ -2034,7 +2143,7 @@ function renderSettingsView() {
       notesExportConfig.nextcloud.username = e.target.value.trim();
       await saveNotesExportConfig();
     });
-    exportSection.appendChild(ncUserField);
+    wrap.appendChild(ncUserField);
 
     const ncPassField = document.createElement('div');
     ncPassField.className = 'settings-terminal-field';
@@ -2047,13 +2156,13 @@ function renderSettingsView() {
       notesExportConfig.nextcloud.password = e.target.value;
       await saveNotesExportConfig();
     });
-    exportSection.appendChild(ncPassField);
+    wrap.appendChild(ncPassField);
 
     const ncTip = document.createElement('div');
     ncTip.className = 'settings-row-desc';
     ncTip.style.marginTop = '6px';
     ncTip.textContent = 'Use a revocable app password from your Nextcloud security settings. Stored locally in the extension.';
-    exportSection.appendChild(ncTip);
+    wrap.appendChild(ncTip);
 
     // Prompt for host permission if needed
     if (notesExportConfig.nextcloud.url) {
@@ -2070,7 +2179,7 @@ function renderSettingsView() {
                 if (granted) { grantBtn.textContent = 'Access granted'; grantBtn.disabled = true; }
               });
             });
-            exportSection.appendChild(grantBtn);
+            wrap.appendChild(grantBtn);
           }
         });
       } catch {}
@@ -2108,13 +2217,13 @@ function renderSettingsView() {
       testBtn.disabled = false;
       setTimeout(() => { testBtn.textContent = 'Test connection'; }, 3000);
     });
-    exportSection.appendChild(testBtn);
+    wrap.appendChild(testBtn);
   }
 
   // Export now button
   const exportNowBtn = document.createElement('button');
   exportNowBtn.className = 'settings-sync-btn';
-  exportNowBtn.style.marginTop = '12px';
+  exportNowBtn.style.marginTop = '16px';
   exportNowBtn.innerHTML = createLucideIcon('upload', 16).outerHTML + '<span>Export notes now</span>';
   exportNowBtn.addEventListener('click', async () => {
     exportNowBtn.disabled = true;
@@ -2125,7 +2234,7 @@ function renderSettingsView() {
         exportNowBtn.querySelector('span').textContent = errors.join('; ');
       } else if (results.length > 0) {
         exportNowBtn.querySelector('span').textContent = 'Exported to ' + results.join(' & ');
-        const statusEl = exportSection.querySelector('.settings-sync-status');
+        const statusEl = wrap.querySelector('.settings-sync-status');
         if (statusEl) statusEl.textContent = 'Last exported: just now';
       } else {
         exportNowBtn.querySelector('span').textContent = 'Enable a target above first';
@@ -2139,7 +2248,7 @@ function renderSettingsView() {
       exportNowBtn.innerHTML = createLucideIcon('upload', 16).outerHTML + '<span>Export notes now</span>';
     }, 2500);
   });
-  exportSection.appendChild(exportNowBtn);
+  wrap.appendChild(exportNowBtn);
 
   const exportStatusEl = document.createElement('div');
   exportStatusEl.className = 'settings-sync-status';
@@ -2151,81 +2260,7 @@ function renderSettingsView() {
       exportStatusEl.textContent = 'Never exported';
     }
   });
-  exportSection.appendChild(exportStatusEl);
-
-  wrap.appendChild(exportSection);
-
-  // Data section
-  const dataSection = document.createElement('div');
-  dataSection.className = 'settings-section';
-  const dataLabel = document.createElement('div');
-  dataLabel.className = 'settings-section-label';
-  dataLabel.textContent = 'Data';
-  dataSection.appendChild(dataLabel);
-
-  const exportBtn = document.createElement('button');
-  exportBtn.className = 'settings-action-btn';
-  exportBtn.textContent = 'Export all data (JSON)';
-  exportBtn.addEventListener('click', async () => {
-    const data = await chrome.storage.local.get(null);
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `snackbar-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  });
-  dataSection.appendChild(exportBtn);
-
-  const importBtn = document.createElement('button');
-  importBtn.className = 'settings-action-btn';
-  importBtn.textContent = 'Import data (JSON)';
-  importBtn.addEventListener('click', () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.addEventListener('change', async () => {
-      const file = input.files[0];
-      if (!file) return;
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-        await chrome.storage.local.set(data);
-        await loadState();
-        await loadFeatures();
-        await applyTheme();
-        render();
-      } catch {
-        // Show inline error
-        importBtn.textContent = 'Import failed — invalid file';
-        setTimeout(() => { importBtn.textContent = 'Import data (JSON)'; }, 2000);
-      }
-    });
-    input.click();
-  });
-  dataSection.appendChild(importBtn);
-
-  wrap.appendChild(dataSection);
-
-  // About
-  const about = document.createElement('div');
-  about.className = 'settings-about';
-  about.innerHTML = `
-    <div class="settings-version">Snackbar v1.0</div>
-    <div class="settings-byline">by <a href="#" id="settingsDivinerLink">Diviner</a></div>
-    <p class="settings-blurb">Built for people who struggle with context switching and staying on task. Visual timers help you see time passing — not just know it's passing. Session tracking shows exactly where your focus went, so you can bill hours accurately or just understand your own patterns.</p>
-    <a href="#" id="settingsSupportLink" class="settings-support-link">${createLucideIcon('heart', 14).outerHTML} Support Snackbar</a>
-  `;
-  about.querySelector('#settingsDivinerLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    chrome.tabs.create({ url: 'https://diviner.agency' });
-  });
-  about.querySelector('#settingsSupportLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    chrome.tabs.create({ url: 'https://ko-fi.com/divinerone' });
-  });
-  wrap.appendChild(about);
+  wrap.appendChild(exportStatusEl);
 
   $content.appendChild(wrap);
 }
@@ -2917,7 +2952,7 @@ async function renderDailyNotepad() {
   status.textContent = '';
   toolbar.appendChild(status);
 
-  if (notepadDate === today && transcriptionConfig.apiKey) {
+  if (notepadDate === today && transcriptionConfig.enabled && transcriptionConfig.apiKey) {
     if (isTranscribing) {
       const stopBtn = document.createElement('button');
       stopBtn.className = 'notepad-mic-btn recording';
@@ -2975,7 +3010,9 @@ async function renderDailyNotepad() {
       `;
       panel.querySelector('.recording-help-settings-link').addEventListener('click', (e) => {
         e.preventDefault();
-        renderSettings();
+        currentView = 'settings';
+        settingsSubPanel = 'transcription';
+        render();
       });
       toolbar.after(panel);
     });
@@ -2983,7 +3020,7 @@ async function renderDailyNotepad() {
   }
 
   // Cloud export button — shown when Drive or Nextcloud is enabled
-  const hasExport = notesExportConfig.googleDrive || notesExportConfig.nextcloud.enabled;
+  const hasExport = notesExportConfig.enabled && (notesExportConfig.googleDrive || notesExportConfig.nextcloud.enabled);
   if (hasExport) {
     const exportBtn = document.createElement('button');
     exportBtn.className = 'notepad-mic-btn';
@@ -3179,7 +3216,7 @@ function renderSpaceNoteEditor(note) {
   backRow.appendChild(status);
 
   // Cloud export button on space note editor
-  const hasExport = notesExportConfig.googleDrive || notesExportConfig.nextcloud.enabled;
+  const hasExport = notesExportConfig.enabled && (notesExportConfig.googleDrive || notesExportConfig.nextcloud.enabled);
   if (hasExport) {
     const exportBtn = document.createElement('button');
     exportBtn.className = 'notepad-mic-btn';

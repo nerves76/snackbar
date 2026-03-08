@@ -1949,6 +1949,46 @@ html, body {
   transform: translateX(16px);
 }
 
+/* Row actions — holds toggle + optional gear button */
+.settings-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Gear button next to toggles for configurable features */
+.settings-gear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 150ms, background 150ms;
+}
+
+.settings-gear-btn:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+/* Navigable row — clickable, shows chevron */
+.settings-nav-row {
+  cursor: pointer;
+  transition: background 150ms;
+  border-radius: var(--radius-sm);
+  padding: 12px 4px;
+}
+
+.settings-nav-row:hover {
+  background: var(--bg-hover);
+}
+
 /* Theme buttons — light / dark / auto selector row */
 .settings-theme-row {
   display: flex;

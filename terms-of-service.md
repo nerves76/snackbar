@@ -16,7 +16,7 @@ All data is stored locally on your device using Chrome's built-in storage. If yo
 
 ## Third-party services
 
-Snackbar integrates with Google Calendar and Google Drive through Google's APIs. Your use of these integrations is also subject to Google's Terms of Service. Diviner is not responsible for the availability or operation of third-party services.
+Snackbar integrates with Google Calendar and Google Drive through Google's APIs. It also supports voice transcription via third-party APIs (Groq, OpenAI, or a custom endpoint you provide) and notes export to Nextcloud servers. Your use of these integrations is subject to the respective service's terms. Diviner is not responsible for the availability or operation of third-party services.
 
 ## No warranty
 
