@@ -2914,6 +2914,11 @@ async function renderDailyNotepad() {
         renderNotepadView();
       });
       toolbar.appendChild(stopBtn);
+
+      const chunkNote = document.createElement('div');
+      chunkNote.className = 'recording-chunk-note';
+      chunkNote.textContent = 'Transcribing every 10 min. Click Stop to transcribe remaining.';
+      toolbar.appendChild(chunkNote);
     } else {
       const recBtn = document.createElement('button');
       recBtn.className = 'notepad-mic-btn';
@@ -3383,6 +3388,19 @@ async function flushNotepad() {
 }
 
 // ── Speech-to-Text (Whisper API via offscreen document) ──
+
+// Listen for progressive transcription chunks from long recordings
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === 'transcription-chunk' && msg.text) {
+    const textarea = document.querySelector('.notepad-textarea');
+    if (!textarea) return;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    textarea.value += (textarea.value && !textarea.value.endsWith('\n') ? '\n' : '') + `[${time}] ${msg.text}\n`;
+    textarea.scrollTop = textarea.scrollHeight;
+    const titleEl = document.querySelector('.notepad-title');
+    saveNotepadContent(titleEl ? titleEl.value : '', textarea.value);
+  }
+});
 
 /** Starts recording audio via the offscreen document. */
 async function startTranscription(textarea, status) {

@@ -1137,6 +1137,7 @@ html, body {
   align-items: center;
   justify-content: space-between;
   min-height: 28px;
+  flex-wrap: wrap;
 }
 
 .notepad-title {
@@ -1232,6 +1233,14 @@ html, body {
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
+}
+
+.recording-chunk-note {
+  width: 100%;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: right;
+  margin-top: 2px;
 }
 
 /* ── Calendar View ── */
