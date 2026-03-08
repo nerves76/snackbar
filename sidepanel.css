@@ -1131,8 +1131,8 @@ html, body {
 /* ── Notepad View ── */
 /* Per-space note editor with title, textarea, and voice dictation */
 .notepad-space-label {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   text-align: center;
   padding: 6px 0 2px;
 }
