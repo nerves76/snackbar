@@ -3386,19 +3386,6 @@ async function flushNotepad() {
 
 // ── Speech-to-Text (Whisper API via user's own key) ──
 
-/** Checks if microphone permission has been granted. */
-async function hasMicPermission() {
-  try {
-    const result = await navigator.permissions.query({ name: 'microphone' });
-    return result.state === 'granted';
-  } catch { return false; }
-}
-
-/** Opens a tab to request microphone permission (required once from a non-sidepanel context). */
-function requestMicPermission() {
-  chrome.tabs.create({ url: chrome.runtime.getURL('request-mic.html') });
-}
-
 /** Starts recording audio from the microphone. */
 async function startTranscription(textarea, status) {
   if (!transcriptionConfig.apiKey) {
@@ -3409,13 +3396,6 @@ async function startTranscription(textarea, status) {
   if (transcriptionConfig.provider === 'custom' && !transcriptionConfig.customUrl) {
     status.textContent = 'Add endpoint URL in Settings';
     setTimeout(() => { status.textContent = ''; }, 3000);
-    return;
-  }
-
-  const hasMic = await hasMicPermission();
-  if (!hasMic) {
-    status.textContent = 'Granting mic access...';
-    requestMicPermission();
     return;
   }
 
@@ -3438,7 +3418,9 @@ async function startTranscription(textarea, status) {
       }
     }, maxMs);
   } catch {
-    status.textContent = 'Mic access denied';
+    // Side panel can't show mic permission dialog — open a tab to grant it
+    status.textContent = 'Opening mic permission page...';
+    chrome.tabs.create({ url: chrome.runtime.getURL('request-mic.html') });
     setTimeout(() => { status.textContent = ''; }, 3000);
   }
 }

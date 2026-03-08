@@ -1188,8 +1188,8 @@ html, body {
 }
 
 .notepad-mic-btn {
-  width: 28px;
   height: 28px;
+  padding: 0 8px;
   border: 1px solid var(--border);
   background: var(--bg-secondary);
   color: var(--text-secondary);
@@ -1201,6 +1201,8 @@ html, body {
   gap: 4px;
   flex-shrink: 0;
   position: relative;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .notepad-mic-btn:hover {

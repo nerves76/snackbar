@@ -4,30 +4,43 @@
   <style>
     body { font-family: -apple-system, system-ui, sans-serif; text-align: center; padding: 40px 20px; background: #1c1c1e; color: #fff; }
     h2 { margin-bottom: 8px; }
-    p { color: #8e8e93; font-size: 14px; }
+    p { color: #8e8e93; font-size: 14px; max-width: 400px; margin: 0 auto; }
     .status { margin-top: 20px; font-size: 14px; }
     .granted { color: #30d158; }
     .denied { color: #ff453a; }
+    button { margin-top: 16px; padding: 10px 24px; border-radius: 8px; border: none; background: #0a84ff; color: #fff; font-size: 14px; cursor: pointer; }
+    button:hover { background: #0070e0; }
+    .help { margin-top: 16px; color: #8e8e93; font-size: 13px; max-width: 400px; margin-left: auto; margin-right: auto; line-height: 1.5; }
   </style>
 </head>
 <body>
   <h2>Microphone Access</h2>
-  <p>Snackbar needs microphone permission for voice transcription.</p>
-  <div class="status" id="status">Requesting access...</div>
+  <p>Snackbar needs microphone permission for voice transcription. Click the button below to allow access.</p>
+  <button id="requestBtn">Allow Microphone</button>
+  <div class="status" id="status"></div>
   <script>
-    (async () => {
-      const statusEl = document.getElementById('status');
+    const statusEl = document.getElementById('status');
+    const requestBtn = document.getElementById('requestBtn');
+
+    requestBtn.addEventListener('click', async () => {
+      statusEl.textContent = 'Requesting access...';
+      statusEl.className = 'status';
+      requestBtn.disabled = true;
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach(t => t.stop());
-        statusEl.textContent = 'Microphone access granted. You can close this tab.';
+        statusEl.textContent = 'Microphone access granted! You can close this tab.';
         statusEl.className = 'status granted';
+        requestBtn.style.display = 'none';
         setTimeout(() => window.close(), 1500);
       } catch (err) {
-        statusEl.textContent = 'Microphone access denied. Please allow it and try again.';
+        statusEl.innerHTML = 'Microphone access was denied.<div class="help">If the browser didn\'t show a permission prompt, click the lock icon in the address bar, find Microphone, set it to Allow, then try again.</div>';
         statusEl.className = 'status denied';
+        requestBtn.disabled = false;
+        requestBtn.textContent = 'Try again';
       }
-    })();
+    });
   </script>
 </body>
 </html>
