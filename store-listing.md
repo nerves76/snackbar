@@ -39,8 +39,11 @@ Record meetings, lectures, or just your own thoughts — right from the notepad.
 **App Links**
 Open projects directly in your editor or terminal from the sidebar. Enable VS Code, Cursor, or any of 7 supported terminals, set your projects folder, and launch with one click. Terminal support uses Hatch, a free open-source helper app for macOS.
 
-**Notes Export**
-Export your daily notes and workspace notes as .txt files to Google Drive or a self-hosted Nextcloud server. Files are organized by space and updated in place — no duplicates.
+**Cloud Save**
+Save your daily notes and workspace notes as .txt files to Google Drive or a self-hosted Nextcloud server. Files are organized by space and updated in place — no duplicates.
+
+**Sync Across Devices**
+Sign in with your Google account and keep your spaces, notes, and settings in sync across computers. Your data is stored privately in a hidden app folder on your Drive — it never touches our servers.
 
 **More**
 - Works on Windows, Mac, and Linux
@@ -48,6 +51,5 @@ Export your daily notes and workspace notes as .txt files to Google Drive or a s
 - Drag-and-drop sorting for spaces, links, and groups
 - Toggle features on/off in clean, organized settings
 - Export & import your data as JSON
-- Cloud sync via Google Drive
 
 Built by Diviner — diviner.agency

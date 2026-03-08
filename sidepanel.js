@@ -302,6 +302,7 @@ let focusTimer = {
   intervalId: null,
   finished: false       // true once countdown reaches zero
 };
+let timerMode = 'timer'; // 'timer' | 'stopwatch' — UI toggle state when idle
 
 let state = null; // root app state: { spaces[], activeSpaceId }
 
@@ -416,6 +417,19 @@ async function loadNotesExportConfig() {
 
 async function saveNotesExportConfig() {
   await chrome.storage.local.set({ notesExportConfig: structuredClone(notesExportConfig) });
+}
+
+// ── Sync Config ──
+
+let syncEnabled = false;
+
+async function loadSyncConfig() {
+  const { syncEnabled: saved } = await chrome.storage.local.get('syncEnabled');
+  if (saved != null) syncEnabled = !!saved;
+}
+
+async function saveSyncConfig() {
+  await chrome.storage.local.set({ syncEnabled });
 }
 
 /** Builds a filename from date and optional title, sanitized for filesystem safety. */
@@ -1471,6 +1485,7 @@ function renderSettingsView() {
   if (settingsSubPanel === 'app-links') return renderSettingsAppLinks();
   if (settingsSubPanel === 'transcription') return renderSettingsTranscription();
   if (settingsSubPanel === 'notes-export') return renderSettingsNotesExport();
+  if (settingsSubPanel === 'sync') return renderSettingsSync();
   renderSettingsMain();
 }
 
@@ -1617,7 +1632,7 @@ function renderSettingsMain() {
   const intSection = createSettingsSection('Integrations');
 
   // App Links: toggle + gear
-  intSection.appendChild(createToggleRow('rocket', 'App Links', 'Open projects in editors and terminals', appLinksConfig.enabled, async (checked) => {
+  intSection.appendChild(createToggleRow('rocket', 'App Links', 'Deep link into apps like editors and terminals', appLinksConfig.enabled, async (checked) => {
     appLinksConfig.enabled = checked;
     await saveAppLinksConfig();
     if (checked && !appLinksConfig.basePath) {
@@ -1648,7 +1663,7 @@ function renderSettingsMain() {
   if (notesExportConfig.googleDrive) exportTargets.push('Google Drive');
   if (notesExportConfig.nextcloud.enabled) exportTargets.push('Nextcloud');
   const exportDesc = exportTargets.length ? exportTargets.join(' + ') : 'Not configured';
-  intSection.appendChild(createToggleRow('upload', 'Notes Export', exportDesc, notesExportConfig.enabled, async (checked) => {
+  intSection.appendChild(createToggleRow('upload', 'Cloud Save', exportDesc, notesExportConfig.enabled, async (checked) => {
     notesExportConfig.enabled = checked;
     await saveNotesExportConfig();
     if (checked && !notesExportConfig.googleDrive && !notesExportConfig.nextcloud.enabled) {
@@ -1658,6 +1673,19 @@ function renderSettingsMain() {
       renderSettingsView();
     }
   }, () => { settingsSubPanel = 'notes-export'; renderSettingsView(); }));
+
+  // Sync: toggle + gear
+  const syncDesc = syncEnabled ? 'Google Drive' : 'Not configured';
+  intSection.appendChild(createToggleRow('cloud', 'Sync', syncDesc, syncEnabled, async (checked) => {
+    syncEnabled = checked;
+    await saveSyncConfig();
+    if (checked) {
+      settingsSubPanel = 'sync';
+      renderSettingsView();
+    } else {
+      renderSettingsView();
+    }
+  }, () => { settingsSubPanel = 'sync'; renderSettingsView(); }));
 
   wrap.appendChild(intSection);
 
@@ -1705,50 +1733,6 @@ function renderSettingsMain() {
     kbSection.appendChild(row);
   });
   wrap.appendChild(kbSection);
-
-  // Sync section
-  const syncSection = createSettingsSection('Sync');
-  const syncDesc = document.createElement('div');
-  syncDesc.className = 'settings-row-desc';
-  syncDesc.style.marginBottom = '8px';
-  syncDesc.textContent = 'Sync your data across devices using Google Drive. Your data is stored privately in an app-only folder.';
-  syncSection.appendChild(syncDesc);
-
-  const syncBtn = document.createElement('button');
-  syncBtn.className = 'settings-sync-btn';
-  syncBtn.innerHTML = createLucideIcon('cloud', 16).outerHTML + '<span>Sync now</span>';
-  syncBtn.addEventListener('click', async () => {
-    syncBtn.disabled = true;
-    syncBtn.querySelector('span').textContent = 'Syncing...';
-    try {
-      const result = await syncToCloud();
-      exportNotesToCloud().catch(e => console.warn('Background notes export failed:', e));
-      syncBtn.querySelector('span').textContent = result === 'pulled' ? 'Updated from cloud' : 'Backed up to cloud';
-      const statusEl = syncSection.querySelector('.settings-sync-status');
-      if (statusEl) statusEl.textContent = 'Last synced: just now';
-    } catch (e) {
-      syncBtn.querySelector('span').textContent = 'Sync failed';
-      console.error('Sync error:', e);
-    }
-    syncBtn.disabled = false;
-    setTimeout(() => {
-      syncBtn.innerHTML = createLucideIcon('cloud', 16).outerHTML + '<span>Sync now</span>';
-    }, 2500);
-  });
-  syncSection.appendChild(syncBtn);
-
-  const syncStatus = document.createElement('div');
-  syncStatus.className = 'settings-sync-status';
-  chrome.storage.local.get('lastSyncedAt').then(({ lastSyncedAt }) => {
-    if (lastSyncedAt) {
-      const d = new Date(lastSyncedAt);
-      syncStatus.textContent = 'Last synced: ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    } else {
-      syncStatus.textContent = 'Never synced';
-    }
-  });
-  syncSection.appendChild(syncStatus);
-  wrap.appendChild(syncSection);
 
   // Data section
   const dataSection = createSettingsSection('Data');
@@ -2058,7 +2042,7 @@ function renderSettingsNotesExport() {
   const wrap = document.createElement('div');
   wrap.className = 'settings-view';
 
-  wrap.appendChild(createSettingsBackTitle('Notes Export', async () => {
+  wrap.appendChild(createSettingsBackTitle('Cloud Save', async () => {
     if (notesExportConfig.enabled && !notesExportConfig.googleDrive && !notesExportConfig.nextcloud.enabled) {
       notesExportConfig.enabled = false;
       await saveNotesExportConfig();
@@ -2068,17 +2052,17 @@ function renderSettingsNotesExport() {
   const desc = document.createElement('div');
   desc.className = 'settings-row-desc';
   desc.style.marginBottom = '12px';
-  desc.textContent = 'Export daily notes and workspace notes as .txt files, organized in folders per space.';
+  desc.textContent = 'Save daily notes and workspace notes as .txt files to the cloud, organized in folders per space.';
   wrap.appendChild(desc);
 
   const helpPanel = document.createElement('div');
   helpPanel.className = 'settings-transcription-help';
   helpPanel.innerHTML = `
-    <p><b>How it works:</b> When you click "Export now", all your daily notes and workspace notes are saved as <b>.txt files</b> organized into folders — one per space, plus a "Daily Notes" folder.</p>
+    <p><b>How it works:</b> When you click "Save now", all your daily notes and workspace notes are saved as <b>.txt files</b> organized into folders — one per space, plus a "Daily Notes" folder.</p>
     <p><b>Google Drive:</b> Files are saved to a <b>Snackbar</b> folder in your Drive. You sign in with your Google account and Snackbar only has access to files it creates — it can't see anything else in your Drive.</p>
     <p><b>Nextcloud:</b> Files are saved via WebDAV to a <b>Snackbar</b> folder on your server. Use an <b>app password</b> (not your main password) from your Nextcloud security settings for safe, revocable access.</p>
     <p><b>Updates, not duplicates:</b> If a note already exists, it's updated in place. Renamed notes create a new file (the old one stays). Deleted notes are not removed from the cloud — they're kept as an archive.</p>
-    <p><b>This is export, not sync.</b> Notes are pushed to the cloud when you click "Export now". They are not automatically synced or pulled back into Snackbar. Use the Sync feature for full two-way sync across devices.</p>
+    <p><b>This is save, not sync.</b> Notes are pushed to the cloud when you click "Save now". They are not automatically synced or pulled back into Snackbar. Use the Sync feature for full two-way sync across devices.</p>
   `;
   wrap.appendChild(helpPanel);
 
@@ -2201,28 +2185,28 @@ function renderSettingsNotesExport() {
   const exportNowBtn = document.createElement('button');
   exportNowBtn.className = 'settings-sync-btn';
   exportNowBtn.style.marginTop = '16px';
-  exportNowBtn.innerHTML = createLucideIcon('upload', 16).outerHTML + '<span>Export notes now</span>';
+  exportNowBtn.innerHTML = createLucideIcon('upload', 16).outerHTML + '<span>Save notes now</span>';
   exportNowBtn.addEventListener('click', async () => {
     exportNowBtn.disabled = true;
-    exportNowBtn.querySelector('span').textContent = 'Exporting...';
+    exportNowBtn.querySelector('span').textContent = 'Saving...';
     try {
       const { results, errors } = await exportNotesToCloud();
       if (errors.length > 0) {
         exportNowBtn.querySelector('span').textContent = errors.join('; ');
       } else if (results.length > 0) {
-        exportNowBtn.querySelector('span').textContent = 'Exported to ' + results.join(' & ');
+        exportNowBtn.querySelector('span').textContent = 'Saved to ' + results.join(' & ');
         const statusEl = wrap.querySelector('.settings-sync-status');
-        if (statusEl) statusEl.textContent = 'Last exported: just now';
+        if (statusEl) statusEl.textContent = 'Last saved: just now';
       } else {
-        exportNowBtn.querySelector('span').textContent = 'Enable a target above first';
+        exportNowBtn.querySelector('span').textContent = 'Enable a destination above first';
       }
     } catch (e) {
-      exportNowBtn.querySelector('span').textContent = 'Export failed: ' + e.message;
-      console.error('Notes export error:', e);
+      exportNowBtn.querySelector('span').textContent = 'Save failed: ' + e.message;
+      console.error('Cloud save error:', e);
     }
     exportNowBtn.disabled = false;
     setTimeout(() => {
-      exportNowBtn.innerHTML = createLucideIcon('upload', 16).outerHTML + '<span>Export notes now</span>';
+      exportNowBtn.innerHTML = createLucideIcon('upload', 16).outerHTML + '<span>Save notes now</span>';
     }, 2500);
   });
   wrap.appendChild(exportNowBtn);
@@ -2232,12 +2216,77 @@ function renderSettingsNotesExport() {
   chrome.storage.local.get('lastNotesExportAt').then(({ lastNotesExportAt }) => {
     if (lastNotesExportAt) {
       const d = new Date(lastNotesExportAt);
-      exportStatusEl.textContent = 'Last exported: ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      exportStatusEl.textContent = 'Last saved: ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
     } else {
-      exportStatusEl.textContent = 'Never exported';
+      exportStatusEl.textContent = 'Never saved';
     }
   });
   wrap.appendChild(exportStatusEl);
+
+  $content.appendChild(wrap);
+}
+
+/** Sub-panel: Sync configuration. */
+function renderSettingsSync() {
+  $content.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'settings-view';
+
+  wrap.appendChild(createSettingsBackTitle('Sync', async () => {
+    settingsSubPanel = null;
+    renderSettingsView();
+  }));
+
+  const desc = document.createElement('div');
+  desc.className = 'settings-row-desc';
+  desc.style.marginBottom = '12px';
+  desc.textContent = 'Keep your spaces, notes, and settings in sync across computers using Google Drive.';
+  wrap.appendChild(desc);
+
+  const help = document.createElement('div');
+  help.className = 'settings-help-block';
+  help.innerHTML = `
+    <p><b>How it works:</b> When you click "Sync now", Snackbar stores a copy of your data in a <b>hidden app folder</b> on your Google Drive. On another computer with the same Google account, syncing pulls that data down.</p>
+    <p><b>Google account required.</b> The first time you sync, Chrome will ask you to sign in and grant Snackbar access to its own app folder. This folder is private — it won't appear in your Drive files.</p>
+    <p><b>Last write wins.</b> If you make changes on two computers, the most recent sync overwrites the older one. Sync often to stay current.</p>
+  `;
+  wrap.appendChild(help);
+
+  // Sync now button
+  const syncBtn = document.createElement('button');
+  syncBtn.className = 'settings-sync-btn';
+  syncBtn.innerHTML = createLucideIcon('cloud', 16).outerHTML + '<span>Sync now</span>';
+  syncBtn.addEventListener('click', async () => {
+    syncBtn.disabled = true;
+    syncBtn.querySelector('span').textContent = 'Syncing...';
+    try {
+      const result = await syncToCloud();
+      exportNotesToCloud().catch(e => console.warn('Background cloud save failed:', e));
+      syncBtn.querySelector('span').textContent = result === 'pulled' ? 'Updated from cloud' : 'Backed up to cloud';
+      const statusEl = wrap.querySelector('.settings-sync-status');
+      if (statusEl) statusEl.textContent = 'Last synced: just now';
+    } catch (e) {
+      syncBtn.querySelector('span').textContent = 'Sync failed: ' + e.message;
+      console.error('Sync error:', e);
+    }
+    syncBtn.disabled = false;
+    setTimeout(() => {
+      syncBtn.innerHTML = createLucideIcon('cloud', 16).outerHTML + '<span>Sync now</span>';
+    }, 2500);
+  });
+  wrap.appendChild(syncBtn);
+
+  const syncStatus = document.createElement('div');
+  syncStatus.className = 'settings-sync-status';
+  chrome.storage.local.get('lastSyncedAt').then(({ lastSyncedAt }) => {
+    if (lastSyncedAt) {
+      const d = new Date(lastSyncedAt);
+      syncStatus.textContent = 'Last synced: ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    } else {
+      syncStatus.textContent = 'Never synced';
+    }
+  });
+  wrap.appendChild(syncStatus);
 
   $content.appendChild(wrap);
 }
@@ -2468,152 +2517,183 @@ async function loadFocusTimerState() {
   } catch {}
 }
 
-/** Builds the focus timer UI: preset buttons when idle, or ring + controls + sites when active. */
+/** Builds the focus timer UI: always shows the ring, with a timer/stopwatch toggle. */
 function renderTimerSection() {
   const section = document.createElement('div');
   section.className = 'timer-section';
 
-  if (!focusTimer.running && focusTimer.elapsed === 0) {
-    // Timer not started — show preset buttons
-    const label = document.createElement('div');
-    label.className = 'timer-label';
-    label.textContent = 'Focus Timer';
-    section.appendChild(label);
+  const idle = !focusTimer.running && focusTimer.elapsed === 0;
+  const elapsed = focusTimer.elapsed;
+  const duration = focusTimer.durationSeconds;
+  const isStopwatch = idle ? timerMode === 'stopwatch' : !duration;
 
-    const controls = document.createElement('div');
-    controls.className = 'timer-presets';
+  // ── Ring (always visible) ──
+  const ringWrap = document.createElement('div');
+  ringWrap.className = 'timer-ring-wrap has-ring';
 
-    // Minutes input
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.className = 'timer-minutes-input';
-    input.min = '1';
-    input.max = '480';
-    input.value = '25';
-    input.placeholder = 'min';
-    input.setAttribute('aria-label', 'Timer minutes');
-    controls.appendChild(input);
-
-    // Start countdown button
-    const startBtn = document.createElement('button');
-    startBtn.className = 'timer-preset-btn';
-    startBtn.textContent = 'Start';
-    startBtn.addEventListener('click', () => {
-      const mins = parseInt(input.value);
-      if (!mins || mins < 1) return;
-      startFocusTimer(mins * 60);
-      renderActivityView();
-    });
-    controls.appendChild(startBtn);
-
-    // Stopwatch button (no limit)
-    const swBtn = document.createElement('button');
-    swBtn.className = 'timer-preset-btn timer-stopwatch-btn';
-    swBtn.appendChild(createLucideIcon('play', 12));
-    const swLabel = document.createElement('span');
-    swLabel.textContent = 'Stopwatch';
-    swBtn.appendChild(swLabel);
-    swBtn.addEventListener('click', () => {
-      startFocusTimer(null);
-      renderActivityView();
-    });
-    controls.appendChild(swBtn);
-
-    // Enter key starts the countdown
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') startBtn.click();
-    });
-
-    section.appendChild(controls);
+  if (!isStopwatch && duration && !idle) {
+    // Countdown: show colored progress segments
+    const progress = Math.min(elapsed / duration, 1);
+    const circumference = 2 * Math.PI * 54;
+    const greenLen = Math.min(progress, 0.5) * circumference;
+    const orangeLen = Math.max(0, Math.min(progress - 0.5, 0.25)) * circumference;
+    const redLen = Math.max(0, Math.min(progress - 0.75, 0.25)) * circumference;
+    const greenRotate = -90;
+    const orangeRotate = -90 + (0.5 * 360);
+    const redRotate = -90 + (0.75 * 360);
+    ringWrap.innerHTML = `
+      <svg class="timer-ring" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="54" fill="none" stroke="var(--bg-secondary)" stroke-width="6" />
+        <circle class="timer-ring-progress" data-segment="green" cx="60" cy="60" r="54" fill="none" stroke="#30d158" stroke-width="6"
+          stroke-dasharray="${greenLen} ${circumference - greenLen}"
+          transform="rotate(${greenRotate} 60 60)" />
+        <circle class="timer-ring-progress" data-segment="orange" cx="60" cy="60" r="54" fill="none" stroke="#ff9f0a" stroke-width="6"
+          stroke-dasharray="${orangeLen} ${circumference - orangeLen}"
+          transform="rotate(${orangeRotate} 60 60)" />
+        <circle class="timer-ring-progress" data-segment="red" cx="60" cy="60" r="54" fill="none" stroke="#ff453a" stroke-width="6"
+          stroke-dasharray="${redLen} ${circumference - redLen}"
+          transform="rotate(${redRotate} 60 60)" />
+      </svg>`;
   } else {
-    // Timer is running or stopped with results
-    const elapsed = focusTimer.elapsed;
-    const duration = focusTimer.durationSeconds;
+    // Stopwatch or idle: empty ring (no fill)
+    ringWrap.innerHTML = `
+      <svg class="timer-ring" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="54" fill="none" stroke="var(--bg-secondary)" stroke-width="6" />
+      </svg>`;
+  }
 
-    // Ring + time display
-    const ringWrap = document.createElement('div');
-    ringWrap.className = 'timer-ring-wrap' + (duration ? ' has-ring' : '');
+  // Time display inside ring
+  const timeDisplay = document.createElement('div');
+  timeDisplay.className = 'timer-time' + (focusTimer.finished ? ' timer-finished' : '');
+  if (!idle && duration && !isStopwatch) {
+    timeDisplay.textContent = formatTimerDisplay(Math.max(0, duration - elapsed));
+  } else {
+    timeDisplay.textContent = formatTimerDisplay(elapsed);
+  }
+  ringWrap.appendChild(timeDisplay);
 
-    if (duration) {
-      const progress = Math.min(elapsed / duration, 1);
-      const circumference = 2 * Math.PI * 54;
-      // Three segments: green 0-50%, orange 50-75%, red 75-100%
-      const greenLen = Math.min(progress, 0.5) * circumference;
-      const orangeLen = Math.max(0, Math.min(progress - 0.5, 0.25)) * circumference;
-      const redLen = Math.max(0, Math.min(progress - 0.75, 0.25)) * circumference;
-      // Each segment starts where the previous one ended (rotate from -90° top)
-      const greenRotate = -90;
-      const orangeRotate = -90 + (0.5 * 360);
-      const redRotate = -90 + (0.75 * 360);
-      ringWrap.innerHTML = `
-        <svg class="timer-ring" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="54" fill="none" stroke="var(--bg-secondary)" stroke-width="6" />
-          <circle class="timer-ring-progress" data-segment="green" cx="60" cy="60" r="54" fill="none" stroke="#30d158" stroke-width="6"
-            stroke-dasharray="${greenLen} ${circumference - greenLen}"
-            transform="rotate(${greenRotate} 60 60)" />
-          <circle class="timer-ring-progress" data-segment="orange" cx="60" cy="60" r="54" fill="none" stroke="#ff9f0a" stroke-width="6"
-            stroke-dasharray="${orangeLen} ${circumference - orangeLen}"
-            transform="rotate(${orangeRotate} 60 60)" />
-          <circle class="timer-ring-progress" data-segment="red" cx="60" cy="60" r="54" fill="none" stroke="#ff453a" stroke-width="6"
-            stroke-dasharray="${redLen} ${circumference - redLen}"
-            transform="rotate(${redRotate} 60 60)" />
-        </svg>`;
-    }
+  if (focusTimer.finished) {
+    const doneLabel = document.createElement('div');
+    doneLabel.className = 'timer-done-label';
+    doneLabel.textContent = 'Time\'s up!';
+    ringWrap.appendChild(doneLabel);
+  }
 
-    const timeDisplay = document.createElement('div');
-    timeDisplay.className = 'timer-time' + (focusTimer.finished ? ' timer-finished' : '');
-    if (duration) {
-      const remaining = Math.max(0, duration - elapsed);
-      timeDisplay.textContent = formatTimerDisplay(remaining);
+  // ── Mode toggle (only when idle, above the ring) ──
+  if (idle) {
+    const toggle = document.createElement('div');
+    toggle.className = 'timer-mode-toggle';
+
+    const timerBtn = document.createElement('button');
+    timerBtn.className = 'timer-mode-btn' + (timerMode === 'timer' ? ' active' : '');
+    timerBtn.textContent = 'Timer';
+    timerBtn.addEventListener('click', () => {
+      timerMode = 'timer';
+      renderActivityView();
+    });
+
+    const swBtn = document.createElement('button');
+    swBtn.className = 'timer-mode-btn' + (timerMode === 'stopwatch' ? ' active' : '');
+    swBtn.textContent = 'Stopwatch';
+    swBtn.addEventListener('click', () => {
+      timerMode = 'stopwatch';
+      renderActivityView();
+    });
+
+    toggle.appendChild(timerBtn);
+    toggle.appendChild(swBtn);
+    section.appendChild(toggle);
+  }
+
+  section.appendChild(ringWrap);
+
+  // ── Controls ──
+  const controls = document.createElement('div');
+  controls.className = 'timer-controls';
+
+  if (idle) {
+    // Idle: show start controls
+    if (timerMode === 'timer') {
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = 'timer-minutes-input';
+      input.min = '1';
+      input.max = '480';
+      input.value = '25';
+      input.placeholder = 'min';
+      input.setAttribute('aria-label', 'Timer minutes');
+
+      const minLabel = document.createElement('span');
+      minLabel.className = 'timer-minutes-label';
+      minLabel.textContent = 'min';
+
+      const inputWrap = document.createElement('div');
+      inputWrap.className = 'timer-minutes-wrap';
+      inputWrap.appendChild(input);
+      inputWrap.appendChild(minLabel);
+      controls.appendChild(inputWrap);
+
+      const startBtn = document.createElement('button');
+      startBtn.className = 'timer-control-btn';
+      startBtn.appendChild(createLucideIcon('play', 14));
+      const startLabel = document.createElement('span');
+      startLabel.textContent = 'Start';
+      startBtn.appendChild(startLabel);
+      startBtn.addEventListener('click', () => {
+        const mins = parseInt(input.value);
+        if (!mins || mins < 1) return;
+        startFocusTimer(mins * 60);
+        renderActivityView();
+      });
+      controls.appendChild(startBtn);
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') startBtn.click();
+      });
     } else {
-      timeDisplay.textContent = formatTimerDisplay(elapsed);
-    }
-    ringWrap.appendChild(timeDisplay);
-
-    if (focusTimer.finished) {
-      const doneLabel = document.createElement('div');
-      doneLabel.className = 'timer-done-label';
-      doneLabel.textContent = 'Time\'s up!';
-      ringWrap.appendChild(doneLabel);
-    }
-
-    section.appendChild(ringWrap);
-
-    // Controls
-    const controls = document.createElement('div');
-    controls.className = 'timer-controls';
-
-    if (focusTimer.running && !focusTimer.finished) {
-      const stopBtn = document.createElement('button');
-      stopBtn.className = 'timer-control-btn';
-      stopBtn.appendChild(createLucideIcon('pause', 14));
-      const stopLabel = document.createElement('span');
-      stopLabel.textContent = 'Stop';
-      stopBtn.appendChild(stopLabel);
-      stopBtn.addEventListener('click', () => {
-        stopFocusTimer();
+      const startBtn = document.createElement('button');
+      startBtn.className = 'timer-control-btn';
+      startBtn.appendChild(createLucideIcon('play', 14));
+      const startLabel = document.createElement('span');
+      startLabel.textContent = 'Start';
+      startBtn.appendChild(startLabel);
+      startBtn.addEventListener('click', () => {
+        startFocusTimer(null);
         renderActivityView();
       });
-      controls.appendChild(stopBtn);
-    } else if (!focusTimer.running && focusTimer.elapsed > 0 && !focusTimer.finished) {
-      // Paused
-      const resumeBtn = document.createElement('button');
-      resumeBtn.className = 'timer-control-btn';
-      resumeBtn.appendChild(createLucideIcon('play', 14));
-      const resumeLabel = document.createElement('span');
-      resumeLabel.textContent = 'Resume';
-      resumeBtn.appendChild(resumeLabel);
-      resumeBtn.addEventListener('click', () => {
-        focusTimer.running = true;
-        // Adjust startTime backward by already-elapsed time so the timer continues seamlessly
-        focusTimer.startTime = Date.now() - focusTimer.elapsed * 1000;
-        saveFocusTimerState();
-        startTimerTick();
-        renderActivityView();
-      });
-      controls.appendChild(resumeBtn);
+      controls.appendChild(startBtn);
     }
+  } else if (focusTimer.running && !focusTimer.finished) {
+    const stopBtn = document.createElement('button');
+    stopBtn.className = 'timer-control-btn';
+    stopBtn.appendChild(createLucideIcon('pause', 14));
+    const stopLabel = document.createElement('span');
+    stopLabel.textContent = 'Stop';
+    stopBtn.appendChild(stopLabel);
+    stopBtn.addEventListener('click', () => {
+      stopFocusTimer();
+      renderActivityView();
+    });
+    controls.appendChild(stopBtn);
+  } else if (!focusTimer.running && elapsed > 0 && !focusTimer.finished) {
+    // Paused
+    const resumeBtn = document.createElement('button');
+    resumeBtn.className = 'timer-control-btn';
+    resumeBtn.appendChild(createLucideIcon('play', 14));
+    const resumeLabel = document.createElement('span');
+    resumeLabel.textContent = 'Resume';
+    resumeBtn.appendChild(resumeLabel);
+    resumeBtn.addEventListener('click', () => {
+      focusTimer.running = true;
+      focusTimer.startTime = Date.now() - focusTimer.elapsed * 1000;
+      saveFocusTimerState();
+      startTimerTick();
+      renderActivityView();
+    });
+    controls.appendChild(resumeBtn);
+  }
 
+  if (!idle) {
     const resetBtn = document.createElement('button');
     resetBtn.className = 'timer-control-btn timer-reset-btn';
     resetBtn.appendChild(createLucideIcon('trash', 14));
@@ -2625,21 +2705,21 @@ function renderTimerSection() {
       renderActivityView();
     });
     controls.appendChild(resetBtn);
+  }
 
-    section.appendChild(controls);
+  section.appendChild(controls);
 
-    // Sites visited during timer
-    if (Object.keys(focusTimer.sites).length > 0) {
-      const sitesLabel = document.createElement('div');
-      sitesLabel.className = 'timer-sites-label';
-      sitesLabel.textContent = 'Sites during session';
-      section.appendChild(sitesLabel);
+  // ── Sites visited during timer ──
+  if (Object.keys(focusTimer.sites).length > 0) {
+    const sitesLabel = document.createElement('div');
+    sitesLabel.className = 'timer-sites-label';
+    sitesLabel.textContent = 'Sites during session';
+    section.appendChild(sitesLabel);
 
-      const sitesList = document.createElement('div');
-      sitesList.className = 'timer-sites activity-list';
-      renderTimerSites(sitesList);
-      section.appendChild(sitesList);
-    }
+    const sitesList = document.createElement('div');
+    sitesList.className = 'timer-sites activity-list';
+    renderTimerSites(sitesList);
+    section.appendChild(sitesList);
   }
 
   return section;
@@ -3016,7 +3096,7 @@ async function renderDailyNotepad() {
           status.textContent = 'Saved to ' + results.join(' & ');
         }
       } catch (err) {
-        status.textContent = 'Export failed';
+        status.textContent = 'Save failed';
       }
       exportBtn.disabled = false;
       exportLabel.textContent = 'Save';
@@ -3212,7 +3292,7 @@ function renderSpaceNoteEditor(note) {
           status.textContent = 'Saved to ' + results.join(' & ');
         }
       } catch {
-        status.textContent = 'Export failed';
+        status.textContent = 'Save failed';
       }
       exportBtn.disabled = false;
       exportLabel.textContent = 'Save';
@@ -4422,6 +4502,7 @@ async function init() {
   await loadState();
   await loadFeatures();
   await loadNotesExportConfig();
+  await loadSyncConfig();
   await loadFocusTimerState();
   applyTheme();
   render();
@@ -4474,7 +4555,7 @@ async function init() {
       case 'f':
         // F key: toggle timer — stop if running, start 25min if idle, reset if paused
         if (currentView === 'activity') {
-          if (focusTimer.running) { stopFocusTimer(); } else if (focusTimer.elapsed === 0) { startFocusTimer(25 * 60); } else { resetFocusTimer(); }
+          if (focusTimer.running) { stopFocusTimer(); } else if (focusTimer.elapsed === 0) { startFocusTimer(timerMode === 'stopwatch' ? null : 25 * 60); } else { resetFocusTimer(); }
           renderActivityView();
           e.preventDefault();
         }
