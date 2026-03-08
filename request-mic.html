@@ -2,43 +2,75 @@
 <html>
 <head>
   <style>
-    body { font-family: -apple-system, system-ui, sans-serif; text-align: center; padding: 40px 20px; background: #1c1c1e; color: #fff; }
-    h2 { margin-bottom: 8px; }
-    p { color: #8e8e93; font-size: 14px; max-width: 400px; margin: 0 auto; }
-    .status { margin-top: 20px; font-size: 14px; }
-    .granted { color: #30d158; }
-    .denied { color: #ff453a; }
-    button { margin-top: 16px; padding: 10px 24px; border-radius: 8px; border: none; background: #0a84ff; color: #fff; font-size: 14px; cursor: pointer; }
+    body { font-family: -apple-system, system-ui, sans-serif; padding: 40px 20px; background: #1c1c1e; color: #fff; max-width: 520px; margin: 0 auto; }
+    h2 { text-align: center; margin-bottom: 4px; }
+    .subtitle { text-align: center; color: #8e8e93; font-size: 14px; margin-bottom: 24px; }
+    .steps { background: #2c2c2e; border-radius: 12px; padding: 20px 24px; }
+    .step { display: flex; gap: 12px; margin-bottom: 16px; font-size: 14px; line-height: 1.5; }
+    .step:last-child { margin-bottom: 0; }
+    .step-num { background: #0a84ff; color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; margin-top: 1px; }
+    .step-text { color: #e5e5e7; }
+    .step-text strong { color: #fff; }
+    .check-area { text-align: center; margin-top: 24px; }
+    button { padding: 10px 24px; border-radius: 8px; border: none; background: #0a84ff; color: #fff; font-size: 14px; cursor: pointer; }
     button:hover { background: #0070e0; }
-    .help { margin-top: 16px; color: #8e8e93; font-size: 13px; max-width: 400px; margin-left: auto; margin-right: auto; line-height: 1.5; }
+    .status { margin-top: 12px; font-size: 14px; }
+    .granted { color: #30d158; }
+    .denied { color: #ff9f0a; }
+    .note { text-align: center; color: #636366; font-size: 12px; margin-top: 20px; }
   </style>
 </head>
 <body>
-  <h2>Microphone Access</h2>
-  <p>Snackbar needs microphone permission for voice transcription. Click the button below to allow access.</p>
-  <button id="requestBtn">Allow Microphone</button>
-  <div class="status" id="status"></div>
+  <h2>Enable Microphone</h2>
+  <p class="subtitle">One-time setup for voice recording in Snackbar.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Click the <strong>puzzle piece icon</strong> in Chrome's toolbar (top right)</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Find <strong>Snackbar</strong> in the list and click the <strong>three dots</strong> menu next to it</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Click <strong>"View web permissions"</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">Find <strong>Microphone</strong> and change it from "Ask" to <strong>"Allow"</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-text">Come back to this tab and click the button below to verify</div>
+    </div>
+  </div>
+
+  <div class="check-area">
+    <button id="checkBtn">Check Microphone Access</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <p class="note">This only needs to be done once. After granting access, you can close this tab.</p>
+
   <script>
     const statusEl = document.getElementById('status');
-    const requestBtn = document.getElementById('requestBtn');
+    const checkBtn = document.getElementById('checkBtn');
 
-    requestBtn.addEventListener('click', async () => {
-      statusEl.textContent = 'Requesting access...';
+    checkBtn.addEventListener('click', async () => {
+      statusEl.textContent = 'Checking...';
       statusEl.className = 'status';
-      requestBtn.disabled = true;
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach(t => t.stop());
-        statusEl.textContent = 'Microphone access granted! You can close this tab.';
+        statusEl.textContent = 'Microphone access granted! You can close this tab and use Record.';
         statusEl.className = 'status granted';
-        requestBtn.style.display = 'none';
-        setTimeout(() => window.close(), 1500);
+        checkBtn.style.display = 'none';
       } catch (err) {
-        statusEl.innerHTML = 'Microphone access was denied.<div class="help">If the browser didn\'t show a permission prompt, click the lock icon in the address bar, find Microphone, set it to Allow, then try again.</div>';
+        statusEl.textContent = 'Not yet — follow the steps above, then check again. (' + err.name + ')';
         statusEl.className = 'status denied';
-        requestBtn.disabled = false;
-        requestBtn.textContent = 'Try again';
       }
     });
   </script>

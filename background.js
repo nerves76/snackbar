@@ -33,9 +33,82 @@ async function detectAndSetIcon() {
 }
 
 // Sidepanel sends 'themeChanged' when user toggles theme in the UI
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.type === 'themeChanged') setIconForTheme(msg.isDark);
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'themeChanged') {
+    setIconForTheme(msg.isDark);
+    return;
+  }
+
+  // Recording commands from side panel — ensure offscreen doc exists, then forward
+  if (msg.type === 'start-recording') {
+    ensureOffscreen()
+      .then(() => chrome.runtime.sendMessage({ target: 'offscreen', action: 'start' }))
+      .then(sendResponse)
+      .catch(err => sendResponse({ error: err.message }));
+    return true;
+  }
+  if (msg.type === 'stop-recording') {
+    chrome.runtime.sendMessage({ target: 'offscreen', action: 'stop' })
+      .then(sendResponse)
+      .catch(err => sendResponse({ error: err.message }));
+    return true;
+  }
+
+  // Transcribe audio via Whisper API — runs in background to bypass CORS
+  if (msg.type === 'transcribe-audio') {
+    transcribeAudio(msg.audioB64, msg.config)
+      .then(text => sendResponse({ text }))
+      .catch(err => sendResponse({ error: err.message }));
+    return true;
+  }
 });
+
+/** Sends audio to a Whisper-compatible API and returns transcript text. */
+async function transcribeAudio(audioB64, config) {
+  // Convert base64 data URL back to blob
+  const fetchResp = await fetch(audioB64);
+  const blob = await fetchResp.blob();
+
+  const formData = new FormData();
+  formData.append('file', blob, 'recording.webm');
+
+  let url;
+  if (config.provider === 'openai') {
+    url = 'https://api.openai.com/v1/audio/transcriptions';
+    formData.append('model', 'whisper-1');
+  } else if (config.provider === 'custom') {
+    url = config.customUrl;
+    if (config.customModel) formData.append('model', config.customModel);
+  } else {
+    url = 'https://api.groq.com/openai/v1/audio/transcriptions';
+    formData.append('model', 'whisper-large-v3');
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${config.apiKey}` },
+    body: formData
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`API error ${res.status}: ${errText}`);
+  }
+
+  const data = await res.json();
+  return data.text || '';
+}
+
+/** Ensures the offscreen document exists for mic recording. */
+async function ensureOffscreen() {
+  const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
+  if (contexts.length > 0) return;
+  await chrome.offscreen.createDocument({
+    url: 'offscreen.html',
+    reasons: ['USER_MEDIA'],
+    justification: 'Microphone recording for voice transcription'
+  });
+}
 
 // Also react to storage changes (covers sidepanel writes we didn't receive via message)
 chrome.storage.onChanged.addListener((changes) => {

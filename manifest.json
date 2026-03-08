@@ -9,7 +9,8 @@
     "tabs",
     "idle",
     "alarms",
-    "identity"
+    "identity",
+    "offscreen"
   ],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "oauth2": {

@@ -2766,8 +2766,6 @@ async function renderActivityView() {
 
 let notepadSaveTimer = null;   // debounce timer for auto-saving notepad content
 let isTranscribing = false;
-let mediaRecorder = null;      // MediaRecorder for voice capture
-let audioChunks = [];          // recorded audio data
 let recordingAutoStopTimer = null; // auto-stop safety timer
 let notepadMode = 'daily';     // 'daily' = date-based notes, 'notes' = workspace notes, 'todos' = workspace todo lists
 let activeSpaceNoteId = null;  // ID of the space note currently open in the editor
@@ -2926,8 +2924,8 @@ async function renderDailyNotepad() {
       recBtn.appendChild(recLabel);
       recBtn.addEventListener('click', async () => {
         const textarea = $content.querySelector('.notepad-textarea');
-        await startTranscription(textarea, status);
-        renderNotepadView();
+        const ok = await startTranscription(textarea, status);
+        if (ok) renderNotepadView(); // only re-render on success (to show stop button)
       });
       toolbar.appendChild(recBtn);
     }
@@ -3384,9 +3382,9 @@ async function flushNotepad() {
   await saveNotepadContent(titleInput ? titleInput.value : '', textarea.value);
 }
 
-// ── Speech-to-Text (Whisper API via user's own key) ──
+// ── Speech-to-Text (Whisper API via offscreen document) ──
 
-/** Starts recording audio from the microphone. */
+/** Starts recording audio via the offscreen document. */
 async function startTranscription(textarea, status) {
   if (!transcriptionConfig.apiKey) {
     status.textContent = 'Add API key in Settings';
@@ -3399,12 +3397,45 @@ async function startTranscription(textarea, status) {
     return;
   }
 
+  // Ensure host permission for the transcription API endpoint
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-    audioChunks = [];
-    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
-    mediaRecorder.start();
+    let apiOrigin;
+    if (transcriptionConfig.provider === 'openai') {
+      apiOrigin = 'https://api.openai.com/*';
+    } else if (transcriptionConfig.provider === 'custom' && transcriptionConfig.customUrl) {
+      const u = new URL(transcriptionConfig.customUrl);
+      apiOrigin = `${u.protocol}//${u.host}/*`;
+    } else {
+      apiOrigin = 'https://api.groq.com/*';
+    }
+    const granted = await chrome.permissions.request({ origins: [apiOrigin] });
+    if (!granted) {
+      status.textContent = 'Permission needed for API access';
+      setTimeout(() => { status.textContent = ''; }, 3000);
+      return false;
+    }
+  } catch {}
+
+  // Check if mic permission has been granted for this extension
+  try {
+    const perm = await navigator.permissions.query({ name: 'microphone' });
+    if (perm.state !== 'granted') {
+      status.textContent = 'Mic setup needed — opening tab...';
+      chrome.tabs.create({ url: chrome.runtime.getURL('request-mic.html') });
+      setTimeout(() => { status.textContent = ''; }, 3000);
+      return false;
+    }
+  } catch {}
+
+  status.textContent = 'Starting mic...';
+
+  try {
+    const resp = await Promise.race([
+      chrome.runtime.sendMessage({ type: 'start-recording' }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+    ]);
+    if (resp?.error) throw new Error(resp.error);
+
     isTranscribing = true;
     status.textContent = 'Recording...';
 
@@ -3417,86 +3448,57 @@ async function startTranscription(textarea, status) {
         renderNotepadView();
       }
     }, maxMs);
-  } catch {
-    // Side panel can't show mic permission dialog — open a tab to grant it
-    status.textContent = 'Opening mic permission page...';
-    chrome.tabs.create({ url: chrome.runtime.getURL('request-mic.html') });
-    setTimeout(() => { status.textContent = ''; }, 3000);
+    return true;
+  } catch (err) {
+    status.textContent = 'Mic error: ' + err.message;
+    setTimeout(() => { status.textContent = ''; }, 5000);
+    return false;
   }
 }
 
 /** Stops recording and sends audio to the Whisper API for transcription. */
 async function stopTranscription(textarea, status) {
   clearTimeout(recordingAutoStopTimer);
-  if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-    isTranscribing = false;
-    return;
+  isTranscribing = false;
+
+  try {
+    const resp = await chrome.runtime.sendMessage({ type: 'stop-recording' });
+
+    if (resp?.error === 'not-recording') {
+      if (status) status.textContent = 'Not recording';
+      setTimeout(() => { if (status) status.textContent = ''; }, 3000);
+      return;
+    }
+    if (!resp?.audioB64) {
+      if (status) status.textContent = 'No audio captured';
+      setTimeout(() => { if (status) status.textContent = ''; }, 3000);
+      return;
+    }
+
+    if (status) status.textContent = 'Transcribing...';
+
+    // Send audio to background for transcription (bypasses CORS)
+    const txResp = await chrome.runtime.sendMessage({
+      type: 'transcribe-audio',
+      audioB64: resp.audioB64,
+      config: { ...transcriptionConfig }
+    });
+    if (txResp?.error) throw new Error(txResp.error);
+    const text = txResp?.text || '';
+    if (text && textarea) {
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      textarea.value += (textarea.value && !textarea.value.endsWith('\n') ? '\n' : '') + `[${time}] ${text}\n`;
+      textarea.scrollTop = textarea.scrollHeight;
+      const titleEl = document.querySelector('.notepad-title');
+      await saveNotepadContent(titleEl ? titleEl.value : '', textarea.value);
+    }
+    if (status) status.textContent = '';
+  } catch (err) {
+    if (status) status.textContent = 'Transcription failed';
+    setTimeout(() => { if (status) status.textContent = ''; }, 5000);
   }
-
-  return new Promise((resolve) => {
-    mediaRecorder.onstop = async () => {
-      // Stop all mic tracks
-      mediaRecorder.stream.getTracks().forEach(t => t.stop());
-      isTranscribing = false;
-
-      if (audioChunks.length === 0) { resolve(); return; }
-
-      const blob = new Blob(audioChunks, { type: 'audio/webm' });
-      audioChunks = [];
-
-      if (status) status.textContent = 'Transcribing...';
-
-      try {
-        const text = await sendToWhisperAPI(blob);
-        if (text && textarea) {
-          const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          textarea.value += (textarea.value && !textarea.value.endsWith('\n') ? '\n' : '') + `[${time}] ${text}\n`;
-          textarea.scrollTop = textarea.scrollHeight;
-          const titleEl = document.querySelector('.notepad-title');
-          saveNotepadContent(titleEl ? titleEl.value : '', textarea.value);
-        }
-        if (status) status.textContent = '';
-      } catch (err) {
-        if (status) status.textContent = 'Transcription failed';
-        setTimeout(() => { if (status) status.textContent = ''; }, 3000);
-      }
-      resolve();
-    };
-    mediaRecorder.stop();
-  });
 }
 
-/** Sends an audio blob to the configured Whisper API and returns the transcript text. */
-async function sendToWhisperAPI(blob) {
-  const formData = new FormData();
-  formData.append('file', blob, 'recording.webm');
-
-  let url;
-  if (transcriptionConfig.provider === 'openai') {
-    url = 'https://api.openai.com/v1/audio/transcriptions';
-    formData.append('model', 'whisper-1');
-  } else if (transcriptionConfig.provider === 'custom') {
-    url = transcriptionConfig.customUrl;
-    if (transcriptionConfig.customModel) formData.append('model', transcriptionConfig.customModel);
-  } else {
-    url = 'https://api.groq.com/openai/v1/audio/transcriptions';
-    formData.append('model', 'whisper-large-v3');
-  }
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${transcriptionConfig.apiKey}` },
-    body: formData
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    throw new Error(`API error ${res.status}: ${errText}`);
-  }
-
-  const data = await res.json();
-  return data.text || '';
-}
 
 // ── Calendar View ──
 
