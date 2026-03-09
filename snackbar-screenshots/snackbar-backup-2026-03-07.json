@@ -1,0 +1,452 @@
+{
+  "activeSpaceId": "s_mmca8eb3j666n",
+  "appLinksConfig": {
+    "basePath": "",
+    "enabled": true,
+    "enabledApps": []
+  },
+  "featureToggles": {
+    "activity": true,
+    "calendar": true,
+    "focusTimer": true,
+    "notepad": true
+  },
+  "lastSyncedAt": 1772833936218,
+  "masterPasswordCheck": {
+    "data": [
+      50,
+      121,
+      55,
+      80,
+      2,
+      147,
+      99,
+      17,
+      104,
+      102,
+      226,
+      123,
+      112,
+      176,
+      242,
+      243,
+      140,
+      162,
+      0,
+      93,
+      2,
+      71,
+      26,
+      75,
+      172,
+      5,
+      104,
+      184,
+      181,
+      123,
+      167,
+      59
+    ],
+    "iv": [
+      250,
+      155,
+      4,
+      92,
+      232,
+      240,
+      32,
+      128,
+      103,
+      215,
+      76,
+      190
+    ],
+    "salt": [
+      227,
+      214,
+      100,
+      150,
+      83,
+      41,
+      12,
+      76,
+      32,
+      102,
+      66,
+      251,
+      64,
+      164,
+      97,
+      73
+    ]
+  },
+  "notepad": {
+    "2026-03-06": "Kicked off the morning with the Acme homepage redesign. Need to finalize hero copy by end of day. Jamie flagged a few accessibility issues on the staging site — added those to the todo list.\n\nAfternoon: focus session on the landing page build. Try to get the animations locked in before the client call tomorrow."
+  },
+  "spaces": [
+    {
+      "color": "#4a90d9",
+      "featured": [
+        {
+          "id": "f_mmbdyz3oq5ya5",
+          "title": "Gmail",
+          "url": "https://mail.google.com/mail/u/0/#inbox"
+        },
+        {
+          "id": "f_mmbdzj2dwylna",
+          "title": "Google Cal",
+          "url": "https://calendar.google.com/calendar/u/0/r"
+        },
+        {
+          "id": "f_mmbe12ug128o6",
+          "title": "Drive",
+          "url": "https://workspace.google.com/products/drive/"
+        }
+      ],
+      "groups": [
+        {
+          "collapsed": false,
+          "id": "g_mmbdln8fvbbpo",
+          "links": [
+            {
+              "id": "l_mmbdv91vxu72g",
+              "title": "Vercel dash",
+              "url": "https://vercel.com/nerves76s-projects"
+            },
+            {
+              "id": "l_mmbdx5spji9z3",
+              "title": "Cloudflare",
+              "url": "https://dash.cloudflare.com/"
+            },
+            {
+              "id": "l_mmbdxti5ukxkv",
+              "title": "Supabase Dash",
+              "url": "https://supabase.com/dashboard/organizations"
+            },
+            {
+              "id": "l_mmbesl1zk1vtz",
+              "title": "Github Repos",
+              "url": "https://github.com/nerves76?tab=repositories"
+            },
+            {
+              "id": "l_mmdw7xxks4fx8",
+              "title": "Prompt Reviews Dash",
+              "url": "https://app.promptreviews.app/dashboard"
+            }
+          ],
+          "name": "Live"
+        },
+        {
+          "collapsed": false,
+          "id": "g_mmbdvv9aoomhq",
+          "links": [
+            {
+              "id": "l_mmbdmolrozsdk",
+              "title": "Prompt Reviews WP",
+              "url": "https://promptreviews.app/"
+            },
+            {
+              "id": "l_mme6hnhi08ffx",
+              "title": "Prompt Reviews Terminal",
+              "url": "terminal://ghostty/Users/chris/Nextcloud/promptreviews-wordpress"
+            }
+          ],
+          "name": "Prompt Reviews Local"
+        },
+        {
+          "collapsed": false,
+          "id": "g_mme6fja3sxulp",
+          "links": [],
+          "name": "Prompt Reviews WP"
+        }
+      ],
+      "icon": "[P]",
+      "id": "s_mmbdlguqrro2t",
+      "name": "Prompt Reviews",
+      "todos": [
+        {
+          "createdAt": "2026-03-06T20:10:32.445Z",
+          "id": "td_mmfbx27xicvkw",
+          "items": [
+            {
+              "done": false,
+              "id": "ti_mmfbxcyi757o5",
+              "text": "Bill teff for hours"
+            },
+            {
+              "done": false,
+              "id": "ti_mmfbxlr45zq9z",
+              "text": ""
+            }
+          ],
+          "pinned": false,
+          "title": "Do soon"
+        }
+      ]
+    },
+    {
+      "color": "#4a90d9",
+      "featured": [],
+      "groups": [
+        {
+          "collapsed": false,
+          "id": "g_mmbeqkkcjtyjo",
+          "links": [
+            {
+              "id": "l_mmberco93awtm",
+              "title": "Great Work Guild",
+              "url": "https://greatworkguild.com/"
+            }
+          ],
+          "name": "DirectoryOne"
+        }
+      ],
+      "icon": "users",
+      "id": "s_mmbeq3trexg4z",
+      "name": "[Dir]",
+      "todos": []
+    },
+    {
+      "color": "#ffffff",
+      "featured": [],
+      "groups": [
+        {
+          "collapsed": false,
+          "id": "g_mmca8podxnn6a",
+          "links": [
+            {
+              "id": "l_mmca9awsupexp",
+              "title": "SW Website",
+              "url": "https://souwesterlodge.com"
+            },
+            {
+              "id": "l_mmca9uhlvl33p",
+              "title": "SW Wordpress",
+              "url": "https://souwesterlodge.com/wp-admin"
+            },
+            {
+              "id": "l_mmce5vzinye2n",
+              "title": "Search Console",
+              "url": "https://search.google.com/search-console"
+            }
+          ],
+          "name": "Souwester"
+        }
+      ],
+      "icon": "briefcase",
+      "id": "s_mmca8eb3j666n",
+      "name": "Diviner Website"
+    },
+    {
+      "color": "#4a90d9",
+      "featured": [
+        {
+          "id": "f_mmdn79293n4cy",
+          "title": "Drive",
+          "url": "https://drive.google.com/drive/home?dmr=1&ec=wgc-drive-%5Bmodule%5D-goto"
+        }
+      ],
+      "groups": [
+        {
+          "collapsed": false,
+          "id": "g_mmcfsewsg6hmo",
+          "links": [
+            {
+              "id": "l_mmch9g7rdmiaq",
+              "title": "Sigma Terminal",
+              "url": "terminal://ghostty/Users/chris/Nextcloud/chromesidebar"
+            },
+            {
+              "id": "l_mmdn7m0lt1ffm",
+              "title": "Feb Report",
+              "url": "https://docs.google.com/presentation/d/1rPpCjyGUNJ4zs9j-m50lcqKcrw4XiiSdbxs_xJ   oTOVU/edit"
+            },
+            {
+              "id": "l_mmdn85yu4pgf6",
+              "title": "Search Console",
+              "url": "https://www.google.com/search?q=search+console&oq=search+console&gs_lcrp=EgZjaHJvbWUqCQgAEEUYOxiABDIJCAAQRRg7GIAEMgcIARAAGIAEMgYIAhBFGDwyBggDEEUYQTIGCAQQRRhBMgYIBRBFGDwyBggGEEUYPDIGCAcQRRhB0gEINDk4MGowajSoAgOwAgHxBTMrvdWUaSY_&sourceid=chrome&ie=UTF-8"
+            },
+            {
+              "id": "l_mmdn9873mz8u1",
+              "title": "Sigma",
+              "url": "https://analytics.google.com/analytics/web/#/a58966024p395521513/reports/intelligenthome"
+            },
+            {
+              "id": "l_mmdoetndz5fs0",
+              "title": "Monday",
+              "url": "https://www.google.com/search?gs_ssp=eJzj4tVP1zc0zDDMNS0wMyhXYDRgdGDw4srNz0tJrFRIzs8FAIBRCJQ&q=monday+com&oq=monday&gs_lcrp=EgZjaHJvbWUqFggEEC4YgwEYxwEYsQMY0QMYgAQYigUyDQgAEAAY4wIYsQMYgAQyCggBEC4YsQMYgAQyDAgCEEUYORixAxiABDIKCAMQABixAxiABDIWCAQQLhiDARjHARixAxjRAxiABBiKBTIGCAUQRRhBMgYIBhBFGEEyBggHEEUYQdIBCDQwMTRqMGo0qAIDsAIB8QWD4SUJr7c3Mw&sourceid=chrome&ie=UTF-8"
+            }
+          ],
+          "name": "Sigma"
+        },
+        {
+          "collapsed": false,
+          "id": "g_mmcfth3h0u90h",
+          "links": [
+            {
+              "id": "l_mmclm49yumo91",
+              "title": "Monday",
+              "url": "https://murmurcreative-squad.monday.com/"
+            },
+            {
+              "id": "l_mmclmne8tppxf",
+              "title": "Harvest",
+              "url": "https://murmurcreative2.harvestapp.com/time"
+            }
+          ],
+          "name": "Murmur"
+        }
+      ],
+      "icon": "M",
+      "id": "s_mmcfr3x89sp90",
+      "name": "Murmur"
+    },
+    {
+      "color": "#309b22",
+      "featured": [
+        {
+          "id": "f_mmckrhggzp04n",
+          "title": "Gmail",
+          "url": "https://mail.google.com/"
+        }
+      ],
+      "groups": [
+        {
+          "collapsed": false,
+          "id": "g_mmcjvx2mu3glh",
+          "links": [
+            {
+              "id": "l_mmcjwe7xwjq2n",
+              "title": "Diviner Web",
+              "url": "https://diviner.agency"
+            },
+            {
+              "id": "l_mmcjwtsr3sf1l",
+              "title": "Diviner Login",
+              "url": "https://diviner.agency/wp-admin"
+            },
+            {
+              "id": "l_mmck5e7vajc13",
+              "title": "Diviner WP Terminal",
+              "url": "terminal://ghostty/Users/chris/Nextcloud/diviner-agency-wordpress"
+            }
+          ],
+          "name": "Website"
+        },
+        {
+          "collapsed": false,
+          "id": "g_mmea70bgd61oj",
+          "links": [
+            {
+              "id": "l_mmck6n95d56wd",
+              "title": "PromptReviews Login",
+              "url": "Https://app.promptreviews.app"
+            },
+            {
+              "id": "l_mmcksbpzmr3tv",
+              "title": "Calendly",
+              "url": "https://calendly.com/app/scheduling/meeting_types/user/me"
+            }
+          ],
+          "name": "Tools"
+        }
+      ],
+      "icon": "target",
+      "id": "s_mmcjvh09jlv56",
+      "name": "Diviner",
+      "notes": [
+        {
+          "content": "just a test",
+          "createdAt": "2026-03-06T03:30:32.205Z",
+          "id": "n_mmec71ql1uusf",
+          "title": "test"
+        }
+      ]
+    },
+    {
+      "color": "#4a90d9",
+      "featured": [],
+      "groups": [
+        {
+          "collapsed": false,
+          "id": "g_mmefbldbnjoso",
+          "links": [
+            {
+              "id": "l_mmefcdx0nukhz",
+              "title": "Grow Your Agency Web",
+              "url": "https://growyouragency.group"
+            },
+            {
+              "id": "l_mmefd3r1i73zh",
+              "title": "Grow Your Agency WP Login",
+              "url": "https://growyouragency.group/wp-admin"
+            }
+          ],
+          "name": "Website"
+        }
+      ],
+      "icon": "GYA",
+      "id": "s_mmefbbfw03r6m",
+      "name": "GYA",
+      "notes": []
+    }
+  ],
+  "systemIsDark": true,
+  "terminalConfig": {
+    "app": "default",
+    "basePath": "",
+    "enabled": true
+  },
+  "theme": "dark",
+  "timeTracking": {
+    "2026-03-06": {
+      "accounts.google.com": 23,
+      "ahrefs.com": 3,
+      "app.ahrefs.com": 97,
+      "app.promptreviews.app": 322,
+      "calendar.google.com": 18,
+      "chrome-stats.com": 34,
+      "chromewebstore.google.com": 172,
+      "cloud.google.com": 9,
+      "console.cloud.google.com": 740,
+      "dash.cloudflare.com": 313,
+      "diviner.agency": 4276,
+      "docs.google.com": 9,
+      "ecs.vancouver.wsu.edu": 20,
+      "mail.google.com": 465,
+      "null": 7,
+      "one.npr.org": 85,
+      "promptreviews.app": 1161,
+      "resend.com": 313,
+      "search.google.com": 16,
+      "topratedwebdevs.com": 1,
+      "us02web.zoom.us": 162,
+      "vercel.com": 396,
+      "www.cloudflare.com": 3,
+      "www.google.com": 142,
+      "www.gravityforms.com": 12,
+      "www.namecheap.com": 379,
+      "www.reddit.com": 31,
+      "www.yelp.com": 30
+    },
+    "2026-03-07": {
+      "accounts.google.com": 7,
+      "admin.google.com": 5,
+      "arc.net": 46,
+      "chrome.google.com": 235,
+      "chromewebstore.google.com": 67,
+      "connect.stripe.com": 90,
+      "diviner.agency": 1195,
+      "github.com": 34,
+      "ko-fi.com": 463,
+      "mail.google.com": 145,
+      "ottoapp.me": 124,
+      "promptreviews.app": 107,
+      "souwesterlodge.com": 15,
+      "www.canva.com": 2,
+      "www.google.com": 180,
+      "www.paypal.com": 435,
+      "zapier.com": 570
+    }
+  }
+}

@@ -69,6 +69,7 @@ const LUCIDE_ICONS = {
   "gift": `<path d="M12 7v14" /> <path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8" /> <path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5" /> <rect x="3" y="7" width="18" height="4" rx="1" />`,
   "git-branch": `<path d="M15 6a9 9 0 0 0-9 9V3" /> <circle cx="18" cy="6" r="3" /> <circle cx="6" cy="18" r="3" />`,
   "globe": `<circle cx="12" cy="12" r="10" /> <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /> <path d="M2 12h20" />`,
+  "link": `<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /> <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />`,
   "help-circle": `<circle cx="12" cy="12" r="10" /> <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /> <path d="M12 17h.01" />`,
   "graduation-cap": `<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.91a2 2 0 0 0 1.66 0z" /> <path d="M22 10v6" /> <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" />`,
   "hard-drive": `<line x1="22" x2="2" y1="12" y2="12" /> <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /> <line x1="6" x2="6.01" y1="16" y2="16" /> <line x1="10" x2="10.01" y1="16" y2="16" />`,
@@ -130,17 +131,49 @@ const LUCIDE_ICONS = {
   "wifi": `<path d="M12 20h.01" /> <path d="M2 8.82a15 15 0 0 1 20 0" /> <path d="M5 12.859a10 10 0 0 1 14 0" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" />`,
   "wrench": `<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z" />`,
   "zap": `<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />`,
+  "activity": `<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />`,
+  "anchor": `<path d="M12 22V8" /> <path d="M5 12H2a10 10 0 0 0 20 0h-3" /> <circle cx="12" cy="5" r="3" />`,
+  "banknote": `<rect width="20" height="12" x="2" y="6" rx="2" /> <circle cx="12" cy="12" r="2" /> <path d="M6 12h.01" /> <path d="M18 12h.01" />`,
+  "battery": `<rect width="16" height="10" x="2" y="7" rx="2" ry="2" /> <line x1="22" x2="22" y1="11" y2="13" />`,
+  "book": `<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />`,
+  "box": `<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" /> <path d="m3.3 7 8.7 5 8.7-5" /> <path d="M12 22V12" />`,
+  "clipboard": `<rect width="8" height="4" x="8" y="2" rx="1" ry="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />`,
+  "cat": `<path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.75 6.92-.46.78.95.96 2.24.5 3.4l-1.17 2.97A4.98 4.98 0 0 1 17 16H7a4.98 4.98 0 0 1-3.25-4.83L2.58 8.2c-.46-1.16-.28-2.45.5-3.4C4.97 2.51 8.22 3.26 10 5.26 10.65 5.09 11.33 5 12 5Z" /> <path d="M8 14v.5" /> <path d="M16 14v.5" /> <path d="M11.25 16.25h1.5L12 17l-.75-.75Z" />`,
+  "crown": `<path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z" /> <path d="M5 21h14" />`,
+  "dog": `<path d="M11.25 16.25h1.5L12 17l-.75-.75Z" /> <path d="M19 3.5c-1.4 0-2.7.5-3.7 1.5L12 8.5 8.7 5C7.7 4 6.4 3.5 5 3.5 3.3 3.5 2 5 2 6.7V11c0 3.9 3.1 7.1 7 7.1h6c3.9 0 7-3.2 7-7.1V6.7C22 5 20.7 3.5 19 3.5Z" /> <path d="M8 14v.5" /> <path d="M16 14v.5" />`,
+  "diamond": `<path d="M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41l-7.59-7.59a2.41 2.41 0 0 0-3.41 0Z" />`,
+  "gem": `<path d="M6 3h12l4 6-10 13L2 9Z" /> <path d="M11 3 8 9l4 13 4-13-3-6" /> <path d="M2 9h20" />`,
+  "glasses": `<circle cx="6" cy="15" r="4" /> <circle cx="18" cy="15" r="4" /> <path d="M14 15a2 2 0 0 0-4 0" /> <path d="M2.5 13 5 7c.7-1.3 1.4-2 3-2" /> <path d="M21.5 13 19 7c-.7-1.3-1.4-2-3-2" />`,
+  "infinity": `<path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z" />`,
+  "laptop": `<path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16" />`,
+  "map": `<path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /> <path d="M15 5.764v15" /> <path d="M9 3.236v15" />`,
+  "monitor": `<rect width="20" height="14" x="2" y="3" rx="2" /> <line x1="8" x2="16" y1="21" y2="21" /> <line x1="12" x2="12" y1="17" y2="21" />`,
+  "package": `<path d="m7.5 4.27 9 5.15" /> <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" /> <path d="m3.3 7 8.7 5 8.7-5" /> <path d="M12 22V12" />`,
+  "power": `<path d="M12 2v10" /> <path d="M18.4 6.6a9 9 0 1 1-12.77.04" />`,
+  "printer": `<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /> <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /> <rect x="6" y="14" width="12" height="8" rx="1" />`,
+  "radio": `<path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" /> <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" /> <circle cx="12" cy="12" r="2" /> <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" /> <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19" />`,
+  "shirt": `<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />`,
+  "smartphone": `<rect width="14" height="20" x="5" y="2" rx="2" ry="2" /> <path d="M12 18h.01" />`,
+  "tent": `<path d="M3.5 21 14 3" /> <path d="M20.5 21 10 3" /> <path d="M15.5 21 12 15l-3.5 6" /> <path d="M2 21h20" />`,
+  "timer": `<line x1="10" x2="14" y1="2" y2="2" /> <line x1="12" x2="15" y1="14" y2="11" /> <circle cx="12" cy="14" r="8" />`,
+  "tree-pine": `<path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14l-3-3.3a1 1 0 0 1 .7-1.7h3.6L7 7.3a1 1 0 0 1 .7-1.7h8.6a1 1 0 0 1 .7 1.7L16 9h3.6a1 1 0 0 1 .7 1.7z" /> <path d="M12 22v-3" />`,
+  "tv": `<rect width="20" height="15" x="2" y="7" rx="2" ry="2" /> <polyline points="17 2 12 7 7 2" />`,
+  "umbrella": `<path d="M22 12a10.06 10.06 0 0 0-20 0Z" /> <path d="M12 12v8a2 2 0 0 0 4 0" /> <path d="M12 2v1" />`,
+  "utensils": `<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" /> <path d="M7 2v20" /> <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />`,
+  "wallet": `<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /> <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /> <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />`,
+  "wine": `<path d="M8 22h8" /> <path d="M7 10h10" /> <path d="M12 15v7" /> <path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z" />`,
 };
 
 // Groups icons into categories for the space icon picker modal
 const ICON_CATEGORIES = {
-  'Work': ['briefcase', 'building-2', 'calendar', 'clock', 'mail', 'phone', 'users', 'user', 'presentation', 'newspaper', 'graduation-cap', 'map-pin'],
-  'Dev': ['code', 'terminal', 'database', 'server', 'git-branch', 'bug', 'cpu', 'globe', 'wifi', 'zap', 'rocket', 'eye'],
-  'Creative': ['palette', 'pen-tool', 'camera', 'film', 'music', 'paintbrush', 'scissors', 'image', 'layers', 'pen', 'lightbulb', 'sparkles'],
-  'Social': ['message-circle', 'send', 'bell', 'megaphone', 'heart', 'share-2', 'at-sign', 'rss', 'headphones', 'gamepad-2', 'book-open', 'trophy'],
-  'Files': ['folder', 'file-text', 'archive', 'bookmark', 'tag', 'search', 'filter', 'list', 'layout-grid', 'key', 'lock', 'shield'],
-  'Nature': ['sun', 'moon', 'star', 'cloud', 'mountain-snow', 'leaf', 'flame', 'droplet', 'compass', 'target', 'flag', 'bike'],
-  'Objects': ['home', 'shopping-cart', 'coffee', 'gift', 'wrench', 'settings', 'plane', 'car'],
+  'Work': ['briefcase', 'building-2', 'calendar', 'clock', 'mail', 'phone', 'users', 'user', 'presentation', 'newspaper', 'graduation-cap', 'map-pin', 'clipboard', 'printer', 'banknote', 'wallet'],
+  'Dev': ['code', 'terminal', 'database', 'server', 'git-branch', 'bug', 'cpu', 'globe', 'wifi', 'zap', 'rocket', 'eye', 'monitor', 'laptop', 'smartphone', 'power'],
+  'Creative': ['palette', 'pen-tool', 'camera', 'film', 'music', 'paintbrush', 'scissors', 'image', 'layers', 'pen', 'lightbulb', 'sparkles', 'diamond', 'gem', 'crown'],
+  'Social': ['message-circle', 'send', 'bell', 'megaphone', 'heart', 'share-2', 'at-sign', 'rss', 'headphones', 'gamepad-2', 'book-open', 'trophy', 'radio', 'tv', 'glasses'],
+  'Files': ['folder', 'file-text', 'archive', 'bookmark', 'tag', 'search', 'filter', 'list', 'layout-grid', 'key', 'lock', 'shield', 'book', 'box', 'package'],
+  'Nature': ['sun', 'moon', 'star', 'cloud', 'mountain-snow', 'leaf', 'flame', 'droplet', 'compass', 'target', 'flag', 'bike', 'tree-pine', 'tent', 'anchor', 'umbrella', 'cat', 'dog'],
+  'Lifestyle': ['home', 'shopping-cart', 'coffee', 'gift', 'car', 'plane', 'shirt', 'wine', 'utensils', 'map', 'activity', 'infinity'],
+  'Tools': ['wrench', 'settings', 'timer', 'battery'],
 };
 
 /** Checks if the URL uses the terminal:// custom protocol. */
@@ -238,12 +271,15 @@ function createFaviconEl(url, size) {
 
 const DEFAULT_STATE = {
   spaces: [],
-  activeSpaceId: null
+  activeSpaceId: null,
+  notes: [],   // unscoped notes (not tied to any space)
+  todos: []    // unscoped todo lists
 };
 
 // ── State ──
 
 let currentView = 'spaces'; // which panel is shown in the content area
+let spaceViewMode = 'links'; // 'links', 'notes', or 'todos' — toggles content within a space
 let settingsSubPanel = null; // null | 'app-links' | 'transcription' | 'notes-export'
 
 // Feature toggles (persisted to storage; control rail icon visibility)
@@ -313,8 +349,12 @@ async function loadState() {
     state = structuredClone(DEFAULT_STATE);
     await saveState();
   } else {
-    state = { spaces: data.spaces, activeSpaceId: data.activeSpaceId };
+    state = { spaces: data.spaces, activeSpaceId: data.activeSpaceId, notes: [], todos: [] };
   }
+  // Load unscoped notes/todos
+  const extra = await chrome.storage.local.get(['unscopedNotes', 'unscopedTodos']);
+  if (extra.unscopedNotes) state.notes = extra.unscopedNotes;
+  if (extra.unscopedTodos) state.todos = extra.unscopedTodos;
   // Ensure activeSpaceId points to an existing space
   if (state.spaces.length > 0 && !state.spaces.find(s => s.id === state.activeSpaceId)) {
     state.activeSpaceId = state.spaces[0].id;
@@ -323,7 +363,12 @@ async function loadState() {
 
 /** Persists current spaces and active workspace ID to chrome.storage.local. */
 async function saveState() {
-  await chrome.storage.local.set({ spaces: state.spaces, activeSpaceId: state.activeSpaceId });
+  await chrome.storage.local.set({
+    spaces: state.spaces,
+    activeSpaceId: state.activeSpaceId,
+    unscopedNotes: state.notes || [],
+    unscopedTodos: state.todos || []
+  });
 }
 
 /** Returns the space object matching the current activeSpaceId, or undefined. */
@@ -1148,13 +1193,36 @@ function renderContent() {
     return;
   }
 
-  // Space title
+  // Space title + view toggle
   const header = document.createElement('div');
   header.className = 'space-header';
   const headerTitle = document.createElement('span');
   headerTitle.textContent = space.name;
   if (space.color) headerTitle.style.color = space.color;
   header.appendChild(headerTitle);
+
+  const viewToggle = document.createElement('div');
+  viewToggle.className = 'space-view-toggle';
+  const linksBtn = document.createElement('button');
+  linksBtn.className = 'space-view-btn' + (spaceViewMode === 'links' ? ' active' : '');
+  linksBtn.title = 'Links';
+  linksBtn.appendChild(createLucideIcon('link', 14));
+  linksBtn.addEventListener('click', (e) => { e.stopPropagation(); spaceViewMode = 'links'; renderContent(); });
+  viewToggle.appendChild(linksBtn);
+  const notesBtn = document.createElement('button');
+  notesBtn.className = 'space-view-btn' + (spaceViewMode === 'notes' ? ' active' : '');
+  notesBtn.title = 'Notes';
+  notesBtn.appendChild(createLucideIcon('file-text', 14));
+  notesBtn.addEventListener('click', (e) => { e.stopPropagation(); spaceViewMode = 'notes'; activeSpaceNoteId = null; renderContent(); });
+  viewToggle.appendChild(notesBtn);
+  const todosBtn = document.createElement('button');
+  todosBtn.className = 'space-view-btn' + (spaceViewMode === 'todos' ? ' active' : '');
+  todosBtn.title = 'Todos';
+  todosBtn.appendChild(createLucideIcon('check-square', 14));
+  todosBtn.addEventListener('click', (e) => { e.stopPropagation(); spaceViewMode = 'todos'; activeSpaceTodoId = null; renderContent(); });
+  viewToggle.appendChild(todosBtn);
+  header.appendChild(viewToggle);
+
   const headerMenu = document.createElement('button');
   headerMenu.className = 'space-header-menu';
   headerMenu.textContent = '⋮';
@@ -1167,6 +1235,16 @@ function renderContent() {
   });
   header.appendChild(headerMenu);
   $content.appendChild(header);
+
+  // Notes or todos view within the space
+  if (spaceViewMode === 'notes') {
+    renderSpaceNotes();
+    return;
+  }
+  if (spaceViewMode === 'todos') {
+    renderSpaceTodos();
+    return;
+  }
 
   // Featured badges — always shown (the `|| true` ensures section renders even when empty)
   if (space.featured.length > 0 || true) {
@@ -1635,7 +1713,7 @@ function renderSettingsMain() {
   const featSection = createSettingsSection('Features');
   const featureList = [
     { key: 'activity', label: 'Activity Tracker', desc: 'Track time spent on websites', icon: 'clock' },
-    { key: 'notepad', label: 'Notepad', desc: 'Daily notes and workspace notes', icon: 'file-text' },
+    { key: 'notepad', label: 'Notepad', desc: 'Notes and to-dos across all spaces', icon: 'file-text' },
     { key: 'calendar', label: 'Calendar', desc: 'Google Calendar integration', icon: 'calendar' },
     { key: 'focusTimer', label: 'Focus Timer', desc: 'Countdown timer with site tracking', icon: 'target' },
   ];
@@ -2900,60 +2978,466 @@ async function renderActivityView() {
 let notepadSaveTimer = null;   // debounce timer for auto-saving notepad content
 let isTranscribing = false;
 let recordingAutoStopTimer = null; // auto-stop safety timer
-let notepadMode = 'daily';     // 'daily' = date-based notes, 'notes' = workspace notes, 'todos' = workspace todo lists
+let notepadMode = 'notes';     // 'notes' = all notes, 'todos' = all todo lists
 let activeSpaceNoteId = null;  // ID of the space note currently open in the editor
 let activeSpaceTodoId = null;  // ID of the todo list currently open in the editor
 
-/** Renders the notepad view with Daily/Notes/Todos tab toggle, then delegates to the active mode. */
+/** Renders the notepad view with All Notes / All Todos toggle. */
 async function renderNotepadView() {
   $content.innerHTML = '';
 
   $content.appendChild(createViewTitleRow('Notepad'));
 
-  const space = getActiveSpace();
-
-  // Show space name for context on Notes/Todos tabs
-  if (space && notepadMode !== 'daily') {
-    const spaceLabel = document.createElement('div');
-    spaceLabel.className = 'notepad-space-label';
-    if (space.color) spaceLabel.style.color = space.color;
-    spaceLabel.textContent = space.name;
-    $content.appendChild(spaceLabel);
-  }
-
   const toggle = document.createElement('div');
   toggle.className = 'modal-toggle';
 
-  const dailyBtn = document.createElement('button');
-  dailyBtn.className = 'toggle-btn' + (notepadMode === 'daily' ? ' active' : '');
-  dailyBtn.textContent = 'Daily';
-  dailyBtn.addEventListener('click', () => { notepadMode = 'daily'; activeSpaceNoteId = null; activeSpaceTodoId = null; renderNotepadView(); });
-  toggle.appendChild(dailyBtn);
-
   const notesBtn = document.createElement('button');
   notesBtn.className = 'toggle-btn' + (notepadMode === 'notes' ? ' active' : '');
-  notesBtn.textContent = 'Notes';
-  notesBtn.addEventListener('click', () => { notepadMode = 'notes'; activeSpaceTodoId = null; renderNotepadView(); });
+  notesBtn.textContent = 'All Notes';
+  notesBtn.addEventListener('click', () => { notepadMode = 'notes'; activeSpaceNoteId = null; activeSpaceTodoId = null; renderNotepadView(); });
   toggle.appendChild(notesBtn);
 
   const todosBtn = document.createElement('button');
   todosBtn.className = 'toggle-btn' + (notepadMode === 'todos' ? ' active' : '');
-  todosBtn.textContent = 'Todos';
-  todosBtn.addEventListener('click', () => { notepadMode = 'todos'; activeSpaceNoteId = null; renderNotepadView(); });
+  todosBtn.textContent = 'All Todos';
+  todosBtn.addEventListener('click', () => { notepadMode = 'todos'; activeSpaceNoteId = null; activeSpaceTodoId = null; renderNotepadView(); });
   toggle.appendChild(todosBtn);
 
   $content.appendChild(toggle);
 
-  if (notepadMode === 'notes') {
-    renderSpaceNotes();
-    return;
-  }
   if (notepadMode === 'todos') {
-    renderSpaceTodos();
+    renderAllTodos();
     return;
   }
 
-  await renderDailyNotepad();
+  renderAllNotes();
+}
+
+/** Renders a combined list of notes from all spaces plus unscoped notes, each tagged with its space badge. */
+function renderAllNotes() {
+  // If editing a specific note, find it (in spaces or unscoped) and render the editor
+  if (activeSpaceNoteId) {
+    // Check unscoped notes first
+    const unscopedNote = (state.notes || []).find(n => n.id === activeSpaceNoteId);
+    if (unscopedNote) {
+      renderUnscopedNoteEditor(unscopedNote);
+      return;
+    }
+    for (const space of state.spaces) {
+      const note = (space.notes || []).find(n => n.id === activeSpaceNoteId);
+      if (note) {
+        state.activeSpaceId = space.id;
+        renderSpaceNoteEditor(note);
+        return;
+      }
+    }
+    activeSpaceNoteId = null;
+  }
+
+  // Gather all notes across spaces + unscoped
+  const allNotes = [];
+  for (const note of (state.notes || [])) {
+    allNotes.push({ note, space: null });
+  }
+  for (const space of state.spaces) {
+    for (const note of (space.notes || [])) {
+      allNotes.push({ note, space });
+    }
+  }
+  allNotes.sort((a, b) => new Date(b.note.createdAt) - new Date(a.note.createdAt));
+
+  const listHeader = document.createElement('div');
+  listHeader.className = 'notepad-toolbar';
+  const countLabel = document.createElement('span');
+  countLabel.className = 'notepad-status';
+  countLabel.textContent = allNotes.length + ' note' + (allNotes.length !== 1 ? 's' : '');
+  listHeader.appendChild(countLabel);
+  const addBtn = document.createElement('button');
+  addBtn.className = 'notepad-mic-btn';
+  addBtn.title = 'New note';
+  addBtn.appendChild(createLucideIcon('plus', 16));
+  addBtn.addEventListener('click', async () => {
+    if (!state.notes) state.notes = [];
+    const newNote = { id: generateId('n'), title: '', content: '', createdAt: new Date().toISOString() };
+    state.notes.unshift(newNote);
+    await saveState();
+    activeSpaceNoteId = newNote.id;
+    renderNotepadView();
+  });
+  listHeader.appendChild(addBtn);
+  $content.appendChild(listHeader);
+
+  if (allNotes.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'No notes yet.';
+    $content.appendChild(empty);
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'space-notes-list';
+  allNotes.forEach(({ note, space }) => {
+    const row = document.createElement('div');
+    row.className = 'space-note-row';
+    row.addEventListener('click', () => {
+      if (space) state.activeSpaceId = space.id;
+      activeSpaceNoteId = note.id;
+      renderNotepadView();
+    });
+
+    const info = document.createElement('div');
+    info.className = 'space-note-info';
+    const title = document.createElement('div');
+    title.className = 'space-note-title';
+    title.textContent = note.title || 'Untitled note';
+    info.appendChild(title);
+    const meta = document.createElement('div');
+    meta.className = 'space-note-meta';
+    const preview = note.content.split('\n')[0].slice(0, 60);
+    const date = new Date(note.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    meta.textContent = date + (preview ? ' — ' + preview : '');
+    info.appendChild(meta);
+    row.appendChild(info);
+
+    if (space) {
+      const badge = document.createElement('span');
+      badge.className = 'all-notes-space-badge';
+      badge.textContent = space.name;
+      if (space.color) badge.style.color = space.color;
+      row.appendChild(badge);
+    }
+
+    list.appendChild(row);
+  });
+  $content.appendChild(list);
+}
+
+/** Renders editor for an unscoped note (not tied to any space). */
+function renderUnscopedNoteEditor(note) {
+  const backRow = document.createElement('div');
+  backRow.className = 'notepad-toolbar';
+  const backBtn = document.createElement('button');
+  backBtn.className = 'activity-nav-btn';
+  backBtn.setAttribute('aria-label', 'Back');
+  backBtn.appendChild(createLucideIcon('chevron-left', 16));
+  backBtn.addEventListener('click', async () => {
+    await flushUnscopedNote(note);
+    activeSpaceNoteId = null;
+    renderNotepadView();
+  });
+  backRow.appendChild(backBtn);
+  const status = document.createElement('span');
+  status.className = 'notepad-status';
+  status.textContent = '';
+  backRow.appendChild(status);
+
+  // Dictation button
+  if (transcriptionConfig.enabled && transcriptionConfig.apiKey) {
+    if (isTranscribing) {
+      const stopBtn = document.createElement('button');
+      stopBtn.className = 'notepad-mic-btn recording';
+      stopBtn.title = 'Stop & transcribe';
+      stopBtn.appendChild(createLucideIcon('square', 14));
+      const stopLabel = document.createElement('span');
+      stopLabel.textContent = 'Stop';
+      stopBtn.appendChild(stopLabel);
+      const dot = document.createElement('span');
+      dot.className = 'recording-dot';
+      stopBtn.appendChild(dot);
+      stopBtn.addEventListener('click', async () => {
+        const textarea = $content.querySelector('.notepad-textarea');
+        await stopTranscription(textarea, status);
+        renderNotepadView();
+      });
+      backRow.appendChild(stopBtn);
+    } else {
+      const recBtn = document.createElement('button');
+      recBtn.className = 'notepad-mic-btn';
+      recBtn.title = 'Record voice note';
+      recBtn.appendChild(createLucideIcon('mic', 14));
+      const recLabel = document.createElement('span');
+      recLabel.textContent = 'Record';
+      recBtn.appendChild(recLabel);
+      recBtn.addEventListener('click', async () => {
+        const textarea = $content.querySelector('.notepad-textarea');
+        const ok = await startTranscription(textarea, status);
+        if (ok) renderNotepadView();
+      });
+      backRow.appendChild(recBtn);
+    }
+  }
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'notepad-mic-btn';
+  delBtn.title = 'Delete note';
+  delBtn.appendChild(createLucideIcon('trash', 14));
+  delBtn.addEventListener('click', async () => {
+    state.notes = (state.notes || []).filter(n => n.id !== note.id);
+    await saveState();
+    activeSpaceNoteId = null;
+    renderNotepadView();
+  });
+  backRow.appendChild(delBtn);
+
+  $content.appendChild(backRow);
+
+  const titleInput = document.createElement('input');
+  titleInput.className = 'notepad-title';
+  titleInput.type = 'text';
+  titleInput.placeholder = 'Untitled note';
+  titleInput.value = note.title;
+  titleInput.addEventListener('input', () => {
+    clearTimeout(notepadSaveTimer);
+    notepadSaveTimer = setTimeout(async () => {
+      note.title = titleInput.value;
+      note.content = textarea.value;
+      await saveState();
+      status.textContent = 'Saved';
+      setTimeout(() => { if (status.textContent === 'Saved') status.textContent = ''; }, 2000);
+    }, 500);
+  });
+  $content.appendChild(titleInput);
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'notepad-textarea';
+  textarea.placeholder = 'Write something...';
+  textarea.value = note.content;
+  textarea.spellcheck = true;
+  textarea.addEventListener('input', () => {
+    clearTimeout(notepadSaveTimer);
+    notepadSaveTimer = setTimeout(async () => {
+      note.title = titleInput.value;
+      note.content = textarea.value;
+      await saveState();
+      status.textContent = 'Saved';
+      setTimeout(() => { if (status.textContent === 'Saved') status.textContent = ''; }, 2000);
+    }, 500);
+  });
+  $content.appendChild(textarea);
+}
+
+/** Immediately saves the current unscoped note editor contents. */
+async function flushUnscopedNote(note) {
+  clearTimeout(notepadSaveTimer);
+  const titleInput = $content.querySelector('.notepad-title');
+  const textarea = $content.querySelector('.notepad-textarea');
+  if (!textarea) return;
+  note.title = titleInput ? titleInput.value : note.title;
+  note.content = textarea.value;
+  await saveState();
+}
+
+/** Renders a combined list of todo lists from all spaces plus unscoped, each tagged with its space badge. */
+function renderAllTodos() {
+  // If editing a specific todo, find it (in spaces or unscoped) and render the editor
+  if (activeSpaceTodoId) {
+    const unscopedTodo = (state.todos || []).find(t => t.id === activeSpaceTodoId);
+    if (unscopedTodo) {
+      renderUnscopedTodoEditor(unscopedTodo);
+      return;
+    }
+    for (const space of state.spaces) {
+      const todo = (space.todos || []).find(t => t.id === activeSpaceTodoId);
+      if (todo) {
+        state.activeSpaceId = space.id;
+        renderTodoEditor(todo);
+        return;
+      }
+    }
+    activeSpaceTodoId = null;
+  }
+
+  // Gather all todos across spaces + unscoped
+  const allTodos = [];
+  for (const todo of (state.todos || [])) {
+    allTodos.push({ todo, space: null });
+  }
+  for (const space of state.spaces) {
+    for (const todo of (space.todos || [])) {
+      allTodos.push({ todo, space });
+    }
+  }
+  allTodos.sort((a, b) => new Date(b.todo.createdAt) - new Date(a.todo.createdAt));
+
+  const listHeader = document.createElement('div');
+  listHeader.className = 'notepad-toolbar';
+  const countLabel = document.createElement('span');
+  countLabel.className = 'notepad-status';
+  countLabel.textContent = allTodos.length + ' list' + (allTodos.length !== 1 ? 's' : '');
+  listHeader.appendChild(countLabel);
+  const addBtn = document.createElement('button');
+  addBtn.className = 'notepad-mic-btn';
+  addBtn.title = 'New todo list';
+  addBtn.appendChild(createLucideIcon('plus', 16));
+  addBtn.addEventListener('click', async () => {
+    if (!state.todos) state.todos = [];
+    const newTodo = { id: generateId('td'), title: '', items: [], pinned: false, createdAt: new Date().toISOString() };
+    state.todos.unshift(newTodo);
+    await saveState();
+    activeSpaceTodoId = newTodo.id;
+    renderNotepadView();
+  });
+  listHeader.appendChild(addBtn);
+  $content.appendChild(listHeader);
+
+  if (allTodos.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'No todo lists yet.';
+    $content.appendChild(empty);
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'space-notes-list';
+  allTodos.forEach(({ todo, space }) => {
+    const row = document.createElement('div');
+    row.className = 'space-note-row';
+    row.addEventListener('click', () => {
+      if (space) state.activeSpaceId = space.id;
+      activeSpaceTodoId = todo.id;
+      renderNotepadView();
+    });
+
+    const info = document.createElement('div');
+    info.className = 'space-note-info';
+    const title = document.createElement('div');
+    title.className = 'space-note-title';
+    title.textContent = todo.title || 'Untitled list';
+    info.appendChild(title);
+    const meta = document.createElement('div');
+    meta.className = 'space-note-meta';
+    const doneCount = todo.items.filter(i => i.done).length;
+    const total = todo.items.length;
+    meta.textContent = total === 0 ? 'Empty' : `${doneCount}/${total} done`;
+    info.appendChild(meta);
+    row.appendChild(info);
+
+    if (space) {
+      const badge = document.createElement('span');
+      badge.className = 'all-notes-space-badge';
+      badge.textContent = space.name;
+      if (space.color) badge.style.color = space.color;
+      row.appendChild(badge);
+    }
+
+    list.appendChild(row);
+  });
+  $content.appendChild(list);
+}
+
+/** Renders editor for an unscoped todo list. */
+function renderUnscopedTodoEditor(todo) {
+  const backRow = document.createElement('div');
+  backRow.className = 'notepad-toolbar';
+  const backBtn = document.createElement('button');
+  backBtn.className = 'activity-nav-btn';
+  backBtn.setAttribute('aria-label', 'Back');
+  backBtn.appendChild(createLucideIcon('chevron-left', 16));
+  backBtn.addEventListener('click', () => { activeSpaceTodoId = null; renderNotepadView(); });
+  backRow.appendChild(backBtn);
+  const status = document.createElement('span');
+  status.className = 'notepad-status';
+  const doneCount = todo.items.filter(i => i.done).length;
+  status.textContent = todo.items.length > 0 ? `${doneCount}/${todo.items.length}` : '';
+  backRow.appendChild(status);
+  $content.appendChild(backRow);
+
+  const titleInput = document.createElement('input');
+  titleInput.className = 'notepad-title';
+  titleInput.type = 'text';
+  titleInput.placeholder = 'Untitled list';
+  titleInput.value = todo.title;
+  titleInput.addEventListener('input', async () => {
+    todo.title = titleInput.value;
+    await saveState();
+  });
+  $content.appendChild(titleInput);
+
+  const itemsList = document.createElement('div');
+  itemsList.className = 'todo-items';
+
+  function renderItems() {
+    itemsList.innerHTML = '';
+    todo.items.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'todo-item' + (item.done ? ' done' : '');
+
+      const checkbox = document.createElement('button');
+      checkbox.className = 'todo-checkbox' + (item.done ? ' checked' : '');
+      checkbox.appendChild(createLucideIcon(item.done ? 'check' : 'plus', 12));
+      checkbox.addEventListener('click', async () => {
+        item.done = !item.done;
+        await saveState();
+        status.textContent = `${todo.items.filter(i => i.done).length}/${todo.items.length}`;
+        renderItems();
+      });
+      row.appendChild(checkbox);
+
+      const text = document.createElement('input');
+      text.className = 'todo-text';
+      text.type = 'text';
+      text.value = item.text;
+      text.addEventListener('input', async () => {
+        item.text = text.value;
+        await saveState();
+      });
+      text.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const idx = todo.items.indexOf(item);
+          const newItem = { id: generateId('ti'), text: '', done: false };
+          todo.items.splice(idx + 1, 0, newItem);
+          await saveState();
+          renderItems();
+          const inputs = itemsList.querySelectorAll('.todo-text');
+          if (inputs[idx + 1]) inputs[idx + 1].focus();
+        }
+        if (e.key === 'Backspace' && item.text === '' && todo.items.length > 1) {
+          e.preventDefault();
+          const idx = todo.items.indexOf(item);
+          todo.items = todo.items.filter(i => i.id !== item.id);
+          await saveState();
+          status.textContent = `${todo.items.filter(i => i.done).length}/${todo.items.length}`;
+          renderItems();
+          const inputs = itemsList.querySelectorAll('.todo-text');
+          const focusIdx = Math.max(0, idx - 1);
+          if (inputs[focusIdx]) inputs[focusIdx].focus();
+        }
+      });
+      row.appendChild(text);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'todo-delete';
+      delBtn.appendChild(createLucideIcon('trash', 12));
+      delBtn.addEventListener('click', async () => {
+        todo.items = todo.items.filter(i => i.id !== item.id);
+        await saveState();
+        status.textContent = todo.items.length > 0 ? `${todo.items.filter(i => i.done).length}/${todo.items.length}` : '';
+        renderItems();
+      });
+      row.appendChild(delBtn);
+
+      itemsList.appendChild(row);
+    });
+
+    const addRow = document.createElement('button');
+    addRow.className = 'todo-add-btn';
+    addRow.textContent = '+ Add item';
+    addRow.addEventListener('click', async () => {
+      todo.items.push({ id: generateId('ti'), text: '', done: false });
+      await saveState();
+      status.textContent = `${todo.items.filter(i => i.done).length}/${todo.items.length}`;
+      renderItems();
+      const inputs = itemsList.querySelectorAll('.todo-text');
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    });
+    itemsList.appendChild(addRow);
+  }
+
+  renderItems();
+  $content.appendChild(itemsList);
 }
 
 /** Renders the daily notepad: date navigation, mic transcription toolbar, title, and textarea. */
@@ -3171,8 +3655,14 @@ async function renderDailyNotepad() {
 
 // ── Space Notes ──
 
+/** Returns the correct re-render function for space notes depending on context. */
+function spaceNotesRerender() {
+  return (currentView === 'spaces' && spaceViewMode === 'notes') ? renderContent : renderNotepadView;
+}
+
 /** Renders the workspace notes list, or the note editor if a specific note is selected. */
 function renderSpaceNotes() {
+  const rerender = spaceNotesRerender();
   const space = getActiveSpace();
   if (!space) return;
   if (!space.notes) space.notes = [];
@@ -3203,7 +3693,7 @@ function renderSpaceNotes() {
     space.notes.unshift(newNote);
     await saveState();
     activeSpaceNoteId = newNote.id;
-    renderNotepadView();
+    rerender();
   });
   listHeader.appendChild(addBtn);
   $content.appendChild(listHeader);
@@ -3221,7 +3711,7 @@ function renderSpaceNotes() {
   space.notes.forEach(note => {
     const row = document.createElement('div');
     row.className = 'space-note-row';
-    row.addEventListener('click', () => { activeSpaceNoteId = note.id; renderNotepadView(); });
+    row.addEventListener('click', () => { activeSpaceNoteId = note.id; rerender(); });
 
     const info = document.createElement('div');
     info.className = 'space-note-info';
@@ -3248,7 +3738,7 @@ function renderSpaceNotes() {
       e.stopPropagation();
       note.pinned = !note.pinned;
       await saveState();
-      renderNotepadView();
+      rerender();
     });
     actions.appendChild(pinBtn);
 
@@ -3260,7 +3750,7 @@ function renderSpaceNotes() {
       e.stopPropagation();
       space.notes = space.notes.filter(n => n.id !== note.id);
       await saveState();
-      renderNotepadView();
+      rerender();
     });
     actions.appendChild(delBtn);
 
@@ -3272,6 +3762,7 @@ function renderSpaceNotes() {
 
 /** Renders a single workspace note editor with title input, textarea, and auto-save. */
 function renderSpaceNoteEditor(note) {
+  const rerender = spaceNotesRerender();
   // Back button
   const backRow = document.createElement('div');
   backRow.className = 'notepad-toolbar';
@@ -3282,13 +3773,49 @@ function renderSpaceNoteEditor(note) {
   backBtn.addEventListener('click', async () => {
     await flushSpaceNote(note);
     activeSpaceNoteId = null;
-    renderNotepadView();
+    rerender();
   });
   backRow.appendChild(backBtn);
   const status = document.createElement('span');
   status.className = 'notepad-status';
   status.textContent = '';
   backRow.appendChild(status);
+
+  // Dictation button
+  if (transcriptionConfig.enabled && transcriptionConfig.apiKey) {
+    if (isTranscribing) {
+      const stopBtn = document.createElement('button');
+      stopBtn.className = 'notepad-mic-btn recording';
+      stopBtn.title = 'Stop & transcribe';
+      stopBtn.appendChild(createLucideIcon('square', 14));
+      const stopLabel = document.createElement('span');
+      stopLabel.textContent = 'Stop';
+      stopBtn.appendChild(stopLabel);
+      const dot = document.createElement('span');
+      dot.className = 'recording-dot';
+      stopBtn.appendChild(dot);
+      stopBtn.addEventListener('click', async () => {
+        const textarea = $content.querySelector('.notepad-textarea');
+        await stopTranscription(textarea, status);
+        rerender();
+      });
+      backRow.appendChild(stopBtn);
+    } else {
+      const recBtn = document.createElement('button');
+      recBtn.className = 'notepad-mic-btn';
+      recBtn.title = 'Record voice note';
+      recBtn.appendChild(createLucideIcon('mic', 14));
+      const recLabel = document.createElement('span');
+      recLabel.textContent = 'Record';
+      recBtn.appendChild(recLabel);
+      recBtn.addEventListener('click', async () => {
+        const textarea = $content.querySelector('.notepad-textarea');
+        const ok = await startTranscription(textarea, status);
+        if (ok) rerender();
+      });
+      backRow.appendChild(recBtn);
+    }
+  }
 
   // Cloud export button on space note editor
   const hasExport = notesExportConfig.enabled && (notesExportConfig.googleDrive || notesExportConfig.nextcloud.enabled);
@@ -3373,8 +3900,14 @@ async function flushSpaceNote(note) {
 
 // ── Space Todos ──
 
+/** Returns the correct re-render function for space todos depending on context. */
+function spaceTodosRerender() {
+  return (currentView === 'spaces' && spaceViewMode === 'todos') ? renderContent : renderNotepadView;
+}
+
 /** Renders the workspace todo list index, or the todo editor if a specific list is selected. */
 function renderSpaceTodos() {
+  const rerender = spaceTodosRerender();
   const space = getActiveSpace();
   if (!space) return;
   if (!space.todos) space.todos = [];
@@ -3401,7 +3934,7 @@ function renderSpaceTodos() {
     space.todos.unshift(newTodo);
     await saveState();
     activeSpaceTodoId = newTodo.id;
-    renderNotepadView();
+    rerender();
   });
   listHeader.appendChild(addBtn);
   $content.appendChild(listHeader);
@@ -3419,7 +3952,7 @@ function renderSpaceTodos() {
   space.todos.forEach(todo => {
     const row = document.createElement('div');
     row.className = 'space-note-row';
-    row.addEventListener('click', () => { activeSpaceTodoId = todo.id; renderNotepadView(); });
+    row.addEventListener('click', () => { activeSpaceTodoId = todo.id; rerender(); });
 
     const info = document.createElement('div');
     info.className = 'space-note-info';
@@ -3446,7 +3979,7 @@ function renderSpaceTodos() {
       e.stopPropagation();
       todo.pinned = !todo.pinned;
       await saveState();
-      renderNotepadView();
+      rerender();
     });
     actions.appendChild(pinBtn);
 
@@ -3458,7 +3991,7 @@ function renderSpaceTodos() {
       e.stopPropagation();
       space.todos = space.todos.filter(t => t.id !== todo.id);
       await saveState();
-      renderNotepadView();
+      rerender();
     });
     actions.appendChild(delBtn);
 
@@ -3470,6 +4003,7 @@ function renderSpaceTodos() {
 
 /** Renders the interactive todo list editor: checkboxes, inline text editing, Enter to add, Backspace to remove. */
 function renderTodoEditor(todo) {
+  const rerender = spaceTodosRerender();
   // Back button + title
   const backRow = document.createElement('div');
   backRow.className = 'notepad-toolbar';
@@ -3477,7 +4011,7 @@ function renderTodoEditor(todo) {
   backBtn.className = 'activity-nav-btn';
   backBtn.setAttribute('aria-label', 'Back');
   backBtn.appendChild(createLucideIcon('chevron-left', 16));
-  backBtn.addEventListener('click', () => { activeSpaceTodoId = null; renderNotepadView(); });
+  backBtn.addEventListener('click', () => { activeSpaceTodoId = null; rerender(); });
   backRow.appendChild(backBtn);
   const status = document.createElement('span');
   status.className = 'notepad-status';
@@ -3873,6 +4407,17 @@ async function renderCalendarView() {
 
   $content.appendChild(header);
 
+  // Open Google Calendar link
+  const gcalLink = document.createElement('a');
+  gcalLink.className = 'calendar-open-link';
+  gcalLink.textContent = 'Open Google Calendar';
+  gcalLink.href = '#';
+  gcalLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: 'https://calendar.google.com' });
+  });
+  $content.appendChild(gcalLink);
+
   // Loading
   const loadingEl = document.createElement('div');
   loadingEl.className = 'empty-state';
@@ -3946,18 +4491,39 @@ function createCalendarEventEl(event) {
     body.appendChild(loc);
   }
 
-  if (event.hangoutLink) {
-    const meet = document.createElement('div');
-    meet.className = 'calendar-event-detail calendar-event-link';
-    meet.appendChild(createLucideIcon('video', 12));
-    const meetText = document.createElement('span');
-    meetText.textContent = 'Join meeting';
-    meet.appendChild(meetText);
-    meet.addEventListener('click', (e) => {
-      e.stopPropagation();
-      chrome.tabs.create({ url: event.hangoutLink });
-    });
-    body.appendChild(meet);
+  if (event.hangoutLink || event.htmlLink) {
+    const linksRow = document.createElement('div');
+    linksRow.className = 'calendar-event-links';
+
+    if (event.hangoutLink) {
+      const meet = document.createElement('div');
+      meet.className = 'calendar-event-detail calendar-event-link';
+      meet.appendChild(createLucideIcon('video', 12));
+      const meetText = document.createElement('span');
+      meetText.textContent = 'Join meeting';
+      meet.appendChild(meetText);
+      meet.addEventListener('click', (e) => {
+        e.stopPropagation();
+        chrome.tabs.create({ url: event.hangoutLink });
+      });
+      linksRow.appendChild(meet);
+    }
+
+    if (event.htmlLink) {
+      const openLink = document.createElement('div');
+      openLink.className = 'calendar-event-detail calendar-event-link';
+      openLink.appendChild(createLucideIcon('calendar', 12));
+      const openText = document.createElement('span');
+      openText.textContent = 'Open event';
+      openLink.appendChild(openText);
+      openLink.addEventListener('click', (e) => {
+        e.stopPropagation();
+        chrome.tabs.create({ url: event.htmlLink });
+      });
+      linksRow.appendChild(openLink);
+    }
+
+    body.appendChild(linksRow);
   }
 
   el.appendChild(body);
@@ -3969,6 +4535,9 @@ function createCalendarEventEl(event) {
 /** Switches to a workspace by ID, returning to the spaces view if in another panel. */
 function switchSpace(id) {
   currentView = 'spaces';
+  spaceViewMode = 'links';
+  activeSpaceNoteId = null;
+  activeSpaceTodoId = null;
   state.activeSpaceId = id;
   saveState();
   render();
