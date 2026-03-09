@@ -166,14 +166,14 @@ const LUCIDE_ICONS = {
 
 // Groups icons into categories for the space icon picker modal
 const ICON_CATEGORIES = {
-  'Work': ['briefcase', 'building-2', 'calendar', 'clock', 'mail', 'phone', 'users', 'user', 'presentation', 'newspaper', 'graduation-cap', 'map-pin', 'clipboard', 'printer', 'banknote', 'wallet'],
+  'Work': ['briefcase', 'building-2', 'mail', 'phone', 'users', 'user', 'presentation', 'newspaper', 'graduation-cap', 'map-pin', 'clipboard', 'printer', 'banknote', 'wallet'],
   'Dev': ['code', 'terminal', 'database', 'server', 'git-branch', 'bug', 'cpu', 'globe', 'wifi', 'zap', 'rocket', 'eye', 'monitor', 'laptop', 'smartphone', 'power'],
   'Creative': ['palette', 'pen-tool', 'camera', 'film', 'music', 'paintbrush', 'scissors', 'image', 'layers', 'pen', 'lightbulb', 'sparkles', 'diamond', 'gem', 'crown'],
   'Social': ['message-circle', 'send', 'bell', 'megaphone', 'heart', 'share-2', 'at-sign', 'rss', 'headphones', 'gamepad-2', 'book-open', 'trophy', 'radio', 'tv', 'glasses'],
-  'Files': ['folder', 'file-text', 'archive', 'bookmark', 'tag', 'search', 'filter', 'list', 'layout-grid', 'key', 'lock', 'shield', 'book', 'box', 'package'],
+  'Files': ['folder', 'archive', 'bookmark', 'tag', 'search', 'filter', 'list', 'layout-grid', 'key', 'lock', 'shield', 'book', 'box', 'package'],
   'Nature': ['sun', 'moon', 'star', 'cloud', 'mountain-snow', 'leaf', 'flame', 'droplet', 'compass', 'target', 'flag', 'bike', 'tree-pine', 'tent', 'anchor', 'umbrella', 'cat', 'dog'],
   'Lifestyle': ['home', 'shopping-cart', 'coffee', 'gift', 'car', 'plane', 'shirt', 'wine', 'utensils', 'map', 'activity', 'infinity'],
-  'Tools': ['wrench', 'settings', 'timer', 'battery'],
+  'Tools': ['wrench', 'timer', 'battery'],
 };
 
 /** Checks if the URL uses the terminal:// custom protocol. */
