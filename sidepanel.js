@@ -2470,8 +2470,11 @@ function startTimerTick() {
     chrome.tabs.query({ active: true, lastFocusedWindow: true }).then(([tab]) => {
       if (tab && tab.url) {
         try {
-          const domain = new URL(tab.url).hostname;
-          if (domain) focusTimer.sites[domain] = (focusTimer.sites[domain] || 0) + 1;
+          const parsed = new URL(tab.url);
+          if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            const domain = parsed.hostname;
+            if (domain) focusTimer.sites[domain] = (focusTimer.sites[domain] || 0) + 1;
+          }
         } catch {}
       }
     }).catch(() => {});
