@@ -1726,6 +1726,11 @@ html, body {
   color: var(--text-secondary);
 }
 
+.link-indicator:hover {
+  opacity: 1;
+  color: var(--text-primary);
+}
+
 /* ── Notes Modal ── */
 /* Textarea and validation styles for link-level notes/credentials */
 .modal-field textarea {
@@ -1757,49 +1762,6 @@ html, body {
   color: #ff453a;
 }
 
-/* ── Credential Row ── */
-/* Username/password fields with copy-to-clipboard button */
-.credential-row {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.credential-row input {
-  flex: 1;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 13px;
-  font-family: inherit;
-  outline: none;
-  min-width: 0;
-}
-
-.credential-row input:focus {
-  border-color: #0a84ff;
-}
-
-.credential-copy-btn {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--border);
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.credential-copy-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
 
 .danger-btn {
   color: #ff453a !important;

@@ -8,7 +8,7 @@
       "featured": [
         { "id": "f_d1", "title": "Project Brief", "url": "https://docs.google.com/document/d/acme-brief" },
         { "id": "f_d2", "title": "Figma Mockups", "url": "https://figma.com/file/acme-redesign" },
-        { "id": "f_d3", "title": "Staging Site", "url": "https://staging.acme.com", "notes": "Password resets every Monday.\nAsk Jamie for new creds if locked out.", "loginUser": "admin@acme.com", "loginPass": "st4ging2026!" }
+        { "id": "f_d3", "title": "Staging Site", "url": "https://staging.acme.com", "notes": "Password resets every Monday.\nAsk Jamie for new creds if locked out." }
       ],
       "groups": [
         {

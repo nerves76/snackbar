@@ -1546,13 +1546,18 @@ function createLinkElement(link, groupId) {
 
   item.appendChild(info);
 
-  // Indicator for notes/login info
-  if (link.notes || link.loginUser || link.loginPass) {
+  // Indicator for notes
+  if (link.notes) {
     const indicators = document.createElement('div');
     indicators.className = 'link-indicators';
     const noteIcon = createLucideIcon('file-text', 12);
     noteIcon.classList.add('link-indicator');
-    noteIcon.title = 'Has notes';
+    noteIcon.title = 'View notes';
+    noteIcon.style.cursor = 'pointer';
+    noteIcon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showNotesModal(link, 'group', groupId);
+    });
     indicators.appendChild(noteIcon);
     item.appendChild(indicators);
   }
@@ -3049,6 +3054,19 @@ function renderAllNotes() {
   }
   allNotes.sort((a, b) => new Date(b.note.createdAt) - new Date(a.note.createdAt));
 
+  // Gather link notes across all spaces (featured + group links)
+  const allLinkNotes = [];
+  for (const space of state.spaces) {
+    for (const feat of (space.featured || [])) {
+      if (feat.notes) allLinkNotes.push({ link: feat, type: 'featured', space, groupId: null });
+    }
+    for (const group of (space.groups || [])) {
+      for (const link of (group.links || [])) {
+        if (link.notes) allLinkNotes.push({ link, type: 'group', space, groupId: group.id });
+      }
+    }
+  }
+
   const listHeader = document.createElement('div');
   listHeader.className = 'notepad-toolbar';
   const countLabel = document.createElement('span');
@@ -3114,6 +3132,58 @@ function renderAllNotes() {
     list.appendChild(row);
   });
   $content.appendChild(list);
+
+  // Link notes section
+  if (allLinkNotes.length > 0) {
+    const linkNotesHeader = document.createElement('div');
+    linkNotesHeader.className = 'notepad-toolbar';
+    const linkNotesLabel = document.createElement('span');
+    linkNotesLabel.className = 'notepad-status';
+    linkNotesLabel.textContent = allLinkNotes.length + ' link note' + (allLinkNotes.length !== 1 ? 's' : '');
+    linkNotesHeader.appendChild(linkNotesLabel);
+    $content.appendChild(linkNotesHeader);
+
+    const linkList = document.createElement('div');
+    linkList.className = 'space-notes-list';
+    allLinkNotes.forEach(({ link, type, space, groupId }) => {
+      const row = document.createElement('div');
+      row.className = 'space-note-row';
+      row.addEventListener('click', () => {
+        showNotesModal(link, type, groupId);
+      });
+
+      const icon = createLucideIcon('link', 14);
+      icon.style.flexShrink = '0';
+      icon.style.opacity = '0.5';
+      icon.style.marginRight = '8px';
+      icon.style.marginTop = '2px';
+      row.appendChild(icon);
+
+      const info = document.createElement('div');
+      info.className = 'space-note-info';
+      const title = document.createElement('div');
+      title.className = 'space-note-title';
+      title.textContent = link.title || link.url;
+      info.appendChild(title);
+      const meta = document.createElement('div');
+      meta.className = 'space-note-meta';
+      const preview = link.notes.split('\n')[0].slice(0, 60);
+      meta.textContent = preview;
+      info.appendChild(meta);
+      row.appendChild(info);
+
+      if (space) {
+        const badge = document.createElement('span');
+        badge.className = 'all-notes-space-badge';
+        badge.textContent = space.name;
+        if (space.color) badge.style.color = space.color;
+        row.appendChild(badge);
+      }
+
+      linkList.appendChild(row);
+    });
+    $content.appendChild(linkList);
+  }
 }
 
 /** Renders editor for an unscoped note (not tied to any space). */
@@ -5059,42 +5129,17 @@ function showNotesModal(link, type, groupId) {
     <div class="modal-field">
       <textarea id="mNotes" rows="4" placeholder="Add notes about this site...">${escapeHtml(link.notes || '')}</textarea>
     </div>
-    <div class="modal-field">
-      <label>Login (optional)</label>
-      <div class="credential-row">
-        <input type="text" id="mLoginUser" value="${escapeHtml(link.loginUser || '')}" placeholder="Username or email">
-        <button class="credential-copy-btn" id="mCopyUser" title="Copy">${createLucideIcon('copy', 14).outerHTML}</button>
-      </div>
-    </div>
-    <div class="modal-field">
-      <div class="credential-row">
-        <input type="password" id="mLoginPass" value="${escapeHtml(link.loginPass || '')}" placeholder="Password">
-        <button class="credential-copy-btn" id="mTogglePass" title="Show/hide">${createLucideIcon('eye', 14).outerHTML}</button>
-        <button class="credential-copy-btn" id="mCopyPass" title="Copy">${createLucideIcon('copy', 14).outerHTML}</button>
-      </div>
-    </div>
     <div class="modal-buttons">
       <button class="modal-btn" id="mCancel">Cancel</button>
       <button class="modal-btn primary" id="mSave">Save</button>
     </div>
   `);
 
-  $modal.querySelector('#mCopyUser').addEventListener('click', () => {
-    navigator.clipboard.writeText($modal.querySelector('#mLoginUser').value);
-  });
-  $modal.querySelector('#mCopyPass').addEventListener('click', () => {
-    navigator.clipboard.writeText($modal.querySelector('#mLoginPass').value);
-  });
-  $modal.querySelector('#mTogglePass').addEventListener('click', () => {
-    const input = $modal.querySelector('#mLoginPass');
-    input.type = input.type === 'password' ? 'text' : 'password';
-  });
-
   $modal.querySelector('#mCancel').addEventListener('click', closeModal);
   $modal.querySelector('#mSave').addEventListener('click', async () => {
     link.notes = $modal.querySelector('#mNotes').value;
-    link.loginUser = $modal.querySelector('#mLoginUser').value.trim();
-    link.loginPass = $modal.querySelector('#mLoginPass').value;
+    delete link.loginUser;
+    delete link.loginPass;
     await saveState();
     closeModal();
     render();
