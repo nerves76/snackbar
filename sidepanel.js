@@ -5019,7 +5019,7 @@ function showLinkModal(existing, type, groupId) {
     </div>
     <div id="mWebFields" class="modal-field" ${isApp ? 'style="display:none"' : ''}>
       <label>URL</label>
-      <input type="text" id="mLUrl" value="${isEdit && !isApp ? escapeHtml(existing.url) : ''}" placeholder="https://example.com">
+      <input type="text" id="mLUrl" value="${isEdit ? escapeHtml(existing.url) : ''}" placeholder="https://example.com">
     </div>
     ${hasApps ? `<div id="mAppFields" ${!isApp ? 'style="display:none"' : ''}>
       <div class="modal-field">
