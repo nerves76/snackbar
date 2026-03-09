@@ -3132,54 +3132,6 @@ function renderUnscopedNoteEditor(note) {
   status.textContent = '';
   backRow.appendChild(status);
 
-  // Dictation button
-  if (transcriptionConfig.enabled && transcriptionConfig.apiKey) {
-    if (isTranscribing) {
-      const stopBtn = document.createElement('button');
-      stopBtn.className = 'notepad-mic-btn recording';
-      stopBtn.title = 'Stop & transcribe';
-      stopBtn.appendChild(createLucideIcon('square', 14));
-      const stopLabel = document.createElement('span');
-      stopLabel.textContent = 'Stop';
-      stopBtn.appendChild(stopLabel);
-      const dot = document.createElement('span');
-      dot.className = 'recording-dot';
-      stopBtn.appendChild(dot);
-      stopBtn.addEventListener('click', async () => {
-        const textarea = $content.querySelector('.notepad-textarea');
-        await stopTranscription(textarea, status);
-        renderNotepadView();
-      });
-      backRow.appendChild(stopBtn);
-    } else {
-      const recBtn = document.createElement('button');
-      recBtn.className = 'notepad-mic-btn';
-      recBtn.title = 'Record voice note';
-      recBtn.appendChild(createLucideIcon('mic', 14));
-      const recLabel = document.createElement('span');
-      recLabel.textContent = 'Record';
-      recBtn.appendChild(recLabel);
-      recBtn.addEventListener('click', async () => {
-        const textarea = $content.querySelector('.notepad-textarea');
-        const ok = await startTranscription(textarea, status);
-        if (ok) renderNotepadView();
-      });
-      backRow.appendChild(recBtn);
-    }
-  }
-
-  const delBtn = document.createElement('button');
-  delBtn.className = 'notepad-mic-btn';
-  delBtn.title = 'Delete note';
-  delBtn.appendChild(createLucideIcon('trash', 14));
-  delBtn.addEventListener('click', async () => {
-    state.notes = (state.notes || []).filter(n => n.id !== note.id);
-    await saveState();
-    activeSpaceNoteId = null;
-    renderNotepadView();
-  });
-  backRow.appendChild(delBtn);
-
   $content.appendChild(backRow);
 
   const titleInput = document.createElement('input');
@@ -3198,6 +3150,62 @@ function renderUnscopedNoteEditor(note) {
     }, 500);
   });
   $content.appendChild(titleInput);
+
+  // Action row (Record left, Delete right) below title
+  const showRecord = transcriptionConfig.enabled && transcriptionConfig.apiKey;
+  {
+    const actionRow = document.createElement('div');
+    actionRow.className = 'note-action-row';
+
+    if (showRecord) {
+      if (isTranscribing) {
+        const stopBtn = document.createElement('button');
+        stopBtn.className = 'note-action-btn recording';
+        stopBtn.title = 'Stop & transcribe';
+        stopBtn.appendChild(createLucideIcon('square', 12));
+        const stopLabel = document.createElement('span');
+        stopLabel.textContent = 'Stop';
+        stopBtn.appendChild(stopLabel);
+        const dot = document.createElement('span');
+        dot.className = 'recording-dot';
+        stopBtn.appendChild(dot);
+        stopBtn.addEventListener('click', async () => {
+          const textarea = $content.querySelector('.notepad-textarea');
+          await stopTranscription(textarea, status);
+          renderNotepadView();
+        });
+        actionRow.appendChild(stopBtn);
+      } else {
+        const recBtn = document.createElement('button');
+        recBtn.className = 'note-action-btn';
+        recBtn.title = 'Record voice note';
+        recBtn.appendChild(createLucideIcon('mic', 12));
+        const recLabel = document.createElement('span');
+        recLabel.textContent = 'Record';
+        recBtn.appendChild(recLabel);
+        recBtn.addEventListener('click', async () => {
+          const textarea = $content.querySelector('.notepad-textarea');
+          const ok = await startTranscription(textarea, status);
+          if (ok) renderNotepadView();
+        });
+        actionRow.appendChild(recBtn);
+      }
+    }
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'note-action-btn';
+    delBtn.title = 'Delete note';
+    delBtn.appendChild(createLucideIcon('trash', 12));
+    delBtn.addEventListener('click', async () => {
+      state.notes = (state.notes || []).filter(n => n.id !== note.id);
+      await saveState();
+      activeSpaceNoteId = null;
+      renderNotepadView();
+    });
+    actionRow.appendChild(delBtn);
+
+    $content.appendChild(actionRow);
+  }
 
   const textarea = document.createElement('textarea');
   textarea.className = 'notepad-textarea';
@@ -3781,73 +3789,6 @@ function renderSpaceNoteEditor(note) {
   status.textContent = '';
   backRow.appendChild(status);
 
-  // Dictation button
-  if (transcriptionConfig.enabled && transcriptionConfig.apiKey) {
-    if (isTranscribing) {
-      const stopBtn = document.createElement('button');
-      stopBtn.className = 'notepad-mic-btn recording';
-      stopBtn.title = 'Stop & transcribe';
-      stopBtn.appendChild(createLucideIcon('square', 14));
-      const stopLabel = document.createElement('span');
-      stopLabel.textContent = 'Stop';
-      stopBtn.appendChild(stopLabel);
-      const dot = document.createElement('span');
-      dot.className = 'recording-dot';
-      stopBtn.appendChild(dot);
-      stopBtn.addEventListener('click', async () => {
-        const textarea = $content.querySelector('.notepad-textarea');
-        await stopTranscription(textarea, status);
-        rerender();
-      });
-      backRow.appendChild(stopBtn);
-    } else {
-      const recBtn = document.createElement('button');
-      recBtn.className = 'notepad-mic-btn';
-      recBtn.title = 'Record voice note';
-      recBtn.appendChild(createLucideIcon('mic', 14));
-      const recLabel = document.createElement('span');
-      recLabel.textContent = 'Record';
-      recBtn.appendChild(recLabel);
-      recBtn.addEventListener('click', async () => {
-        const textarea = $content.querySelector('.notepad-textarea');
-        const ok = await startTranscription(textarea, status);
-        if (ok) rerender();
-      });
-      backRow.appendChild(recBtn);
-    }
-  }
-
-  // Cloud export button on space note editor
-  const hasExport = notesExportConfig.enabled && (notesExportConfig.googleDrive || notesExportConfig.nextcloud.enabled);
-  if (hasExport) {
-    const exportBtn = document.createElement('button');
-    exportBtn.className = 'notepad-mic-btn';
-    exportBtn.title = 'Save notes to cloud';
-    exportBtn.appendChild(createLucideIcon('cloud-upload', 14));
-    const exportLabel = document.createElement('span');
-    exportLabel.textContent = 'Save';
-    exportBtn.appendChild(exportLabel);
-    exportBtn.addEventListener('click', async () => {
-      await flushSpaceNote(note);
-      exportBtn.disabled = true;
-      exportLabel.textContent = 'Saving...';
-      try {
-        const { results, errors } = await exportNotesToCloud();
-        if (errors.length > 0) {
-          status.textContent = errors[0];
-        } else {
-          status.textContent = 'Saved to ' + results.join(' & ');
-        }
-      } catch {
-        status.textContent = 'Save failed';
-      }
-      exportBtn.disabled = false;
-      exportLabel.textContent = 'Save';
-      setTimeout(() => { status.textContent = ''; }, 3000);
-    });
-    backRow.appendChild(exportBtn);
-  }
-
   $content.appendChild(backRow);
 
   // Title
@@ -3867,6 +3808,80 @@ function renderSpaceNoteEditor(note) {
     }, 500);
   });
   $content.appendChild(titleInput);
+
+  // Action row (Record left, Save right) below title
+  const showRecord = transcriptionConfig.enabled && transcriptionConfig.apiKey;
+  const hasExport = notesExportConfig.enabled && (notesExportConfig.googleDrive || notesExportConfig.nextcloud.enabled);
+  if (showRecord || hasExport) {
+    const actionRow = document.createElement('div');
+    actionRow.className = 'note-action-row';
+
+    if (showRecord) {
+      if (isTranscribing) {
+        const stopBtn = document.createElement('button');
+        stopBtn.className = 'note-action-btn recording';
+        stopBtn.title = 'Stop & transcribe';
+        stopBtn.appendChild(createLucideIcon('square', 12));
+        const stopLabel = document.createElement('span');
+        stopLabel.textContent = 'Stop';
+        stopBtn.appendChild(stopLabel);
+        const dot = document.createElement('span');
+        dot.className = 'recording-dot';
+        stopBtn.appendChild(dot);
+        stopBtn.addEventListener('click', async () => {
+          const textarea = $content.querySelector('.notepad-textarea');
+          await stopTranscription(textarea, status);
+          rerender();
+        });
+        actionRow.appendChild(stopBtn);
+      } else {
+        const recBtn = document.createElement('button');
+        recBtn.className = 'note-action-btn';
+        recBtn.title = 'Record voice note';
+        recBtn.appendChild(createLucideIcon('mic', 12));
+        const recLabel = document.createElement('span');
+        recLabel.textContent = 'Record';
+        recBtn.appendChild(recLabel);
+        recBtn.addEventListener('click', async () => {
+          const textarea = $content.querySelector('.notepad-textarea');
+          const ok = await startTranscription(textarea, status);
+          if (ok) rerender();
+        });
+        actionRow.appendChild(recBtn);
+      }
+    }
+
+    if (hasExport) {
+      const exportBtn = document.createElement('button');
+      exportBtn.className = 'note-action-btn';
+      exportBtn.title = 'Save notes to cloud';
+      exportBtn.appendChild(createLucideIcon('cloud-upload', 12));
+      const exportLabel = document.createElement('span');
+      exportLabel.textContent = 'Save';
+      exportBtn.appendChild(exportLabel);
+      exportBtn.addEventListener('click', async () => {
+        await flushSpaceNote(note);
+        exportBtn.disabled = true;
+        exportLabel.textContent = 'Saving...';
+        try {
+          const { results, errors } = await exportNotesToCloud();
+          if (errors.length > 0) {
+            status.textContent = errors[0];
+          } else {
+            status.textContent = 'Saved to ' + results.join(' & ');
+          }
+        } catch {
+          status.textContent = 'Save failed';
+        }
+        exportBtn.disabled = false;
+        exportLabel.textContent = 'Save';
+        setTimeout(() => { status.textContent = ''; }, 3000);
+      });
+      actionRow.appendChild(exportBtn);
+    }
+
+    $content.appendChild(actionRow);
+  }
 
   // Content
   const textarea = document.createElement('textarea');
