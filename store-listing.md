@@ -7,7 +7,7 @@ Organize projects into workspaces with links, notes, and todos — then stay foc
 
 **Detailed description:**
 
-I built Snackbar because I loved Arc's sidebar — and then they stopped updating it. So I made my own, focused on the things I actually needed: workspaces, focus tools, and a way to see where my time goes. I have ADHD, and context switching is my biggest productivity killer. Snackbar is the sidebar I wish I'd always had.
+I built Snackbar because I needed a better way to organize my browser. I have ADHD, and context switching is my biggest productivity killer. I wanted workspaces, focus tools, and a way to see where my time goes — all in the sidebar. Snackbar is the tool I wish I'd always had.
 
 **Workspaces**
 Create a space for every project, client, or area of focus. Inside each space, save links, organize them into groups, and drag to reorder everything. It's your browser, organized the way your brain works.
@@ -16,7 +16,7 @@ Create a space for every project, client, or area of focus. Inside each space, s
 Right-click any saved link to attach notes and login credentials. Keep project context — URLs, usernames, passwords, and reference notes — all in one place.
 
 **Notes & Todos**
-Every workspace gets its own collection of notes and todo lists. Pin important ones to the top. There's also a daily notepad for quick capture throughout the day.
+Every workspace gets its own collection of notes and todo lists. Pin important ones to the top. Use the global notepad view to see all notes and todos across every space, or create quick unscoped notes from anywhere.
 
 **Visual Focus Timer**
 Set any countdown or use the stopwatch. A circular progress ring keeps time visible — no need to check the clock. Visual timers are especially helpful for ADHD brains that lose track of time. Snackbar also tracks which sites you visit during each session, so you can see where focus actually went.
