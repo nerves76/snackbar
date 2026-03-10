@@ -133,6 +133,30 @@ html, body {
   font-size: 18px;
 }
 
+/* ── Rail tooltip (custom flyout) ── */
+.rail-tooltip {
+  position: fixed;
+  left: 50px;
+  background: var(--bg-elevated, var(--bg));
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-4px) translateY(-50%);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+}
+.rail-tooltip.visible {
+  opacity: 1;
+  transform: translateX(0) translateY(-50%);
+}
+
 
 /* ── Content ── */
 /* Scrollable main area that fills remaining width beside the rail */

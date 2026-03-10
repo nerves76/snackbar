@@ -915,6 +915,23 @@ const $content = document.getElementById('content');
 const $modalOverlay = document.getElementById('modalOverlay');
 const $modal = document.getElementById('modal');
 
+// ── Custom rail tooltip ──
+const $railTooltip = document.createElement('div');
+$railTooltip.className = 'rail-tooltip';
+document.body.appendChild($railTooltip);
+
+function attachRailTooltip(el, text) {
+  el.addEventListener('mouseenter', () => {
+    $railTooltip.textContent = text;
+    const rect = el.getBoundingClientRect();
+    $railTooltip.style.top = (rect.top + rect.height / 2) + 'px';
+    $railTooltip.classList.add('visible');
+  });
+  el.addEventListener('mouseleave', () => {
+    $railTooltip.classList.remove('visible');
+  });
+}
+
 // A11y: allow Enter/Space to activate any element with role="button"
 document.addEventListener('keydown', (e) => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute('role') === 'button') {
@@ -963,7 +980,7 @@ function renderRail() {
       item.style.fontSize = space.icon.length > 2 ? '11px' : '14px';
       item.style.fontWeight = '700';
     }
-    item.title = space.name;
+    attachRailTooltip(item, space.name);
     item.setAttribute('role', 'button');
     item.setAttribute('aria-label', space.name);
     item.tabIndex = 0;
@@ -985,6 +1002,7 @@ function renderRail() {
       e.dataTransfer.setData('text/plain', space.id);
       e.dataTransfer.effectAllowed = 'move';
       item.classList.add('dragging');
+      $railTooltip.classList.remove('visible');
     });
     item.addEventListener('dragend', () => {
       item.classList.remove('dragging');
@@ -1028,7 +1046,7 @@ function renderRail() {
   const addBtn = document.createElement('div');
   addBtn.className = 'rail-item rail-add';
   addBtn.textContent = '+';
-  addBtn.title = 'Add Space';
+  attachRailTooltip(addBtn, 'Add Space');
   addBtn.setAttribute('role', 'button');
   addBtn.setAttribute('aria-label', 'Add Space');
   addBtn.tabIndex = 0;
@@ -1044,7 +1062,7 @@ function renderRail() {
     const activityBtn = document.createElement('div');
     activityBtn.className = 'rail-item' + (currentView === 'activity' ? ' active' : '');
     activityBtn.appendChild(createLucideIcon('clock', 18));
-    activityBtn.title = 'Activity (T)';
+    attachRailTooltip(activityBtn, 'Activity (T)');
     activityBtn.setAttribute('role', 'button');
     activityBtn.setAttribute('aria-label', 'Activity');
     activityBtn.tabIndex = 0;
@@ -1060,7 +1078,7 @@ function renderRail() {
     const notepadBtn = document.createElement('div');
     notepadBtn.className = 'rail-item' + (currentView === 'notepad' ? ' active' : '');
     notepadBtn.appendChild(createLucideIcon('file-text', 18));
-    notepadBtn.title = 'Notepad (N)';
+    attachRailTooltip(notepadBtn, 'Notepad (N)');
     notepadBtn.setAttribute('role', 'button');
     notepadBtn.setAttribute('aria-label', 'Notepad');
     notepadBtn.tabIndex = 0;
@@ -1076,7 +1094,7 @@ function renderRail() {
     const calendarBtn = document.createElement('div');
     calendarBtn.className = 'rail-item' + (currentView === 'calendar' ? ' active' : '');
     calendarBtn.appendChild(createLucideIcon('calendar', 18));
-    calendarBtn.title = 'Calendar (C)';
+    attachRailTooltip(calendarBtn, 'Calendar (C)');
     calendarBtn.setAttribute('role', 'button');
     calendarBtn.setAttribute('aria-label', 'Calendar');
     calendarBtn.tabIndex = 0;
@@ -1091,7 +1109,7 @@ function renderRail() {
   const settingsBtn = document.createElement('div');
   settingsBtn.className = 'rail-item' + (currentView === 'settings' ? ' active' : '');
   settingsBtn.appendChild(createLucideIcon('settings', 18));
-  settingsBtn.title = 'Settings';
+  attachRailTooltip(settingsBtn, 'Settings');
   settingsBtn.setAttribute('role', 'button');
   settingsBtn.setAttribute('aria-label', 'Settings');
   settingsBtn.tabIndex = 0;
