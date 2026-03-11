@@ -270,10 +270,35 @@ function createFaviconEl(url, size) {
 // ── Default Data ──
 
 const DEFAULT_STATE = {
-  spaces: [],
-  activeSpaceId: null,
-  notes: [],   // unscoped notes (not tied to any space)
-  todos: []    // unscoped todo lists
+  spaces: [{
+    id: 's_welcome',
+    name: 'Get Started',
+    icon: 'rocket',
+    color: '#0a84ff',
+    featured: [
+      { id: 'f_w1', title: 'Google', url: 'https://google.com' },
+      { id: 'f_w2', title: 'DuckDuckGo', url: 'https://duckduckgo.com' }
+    ],
+    groups: [
+      {
+        id: 'g_w1',
+        name: 'Snackbar',
+        collapsed: false,
+        links: [
+          { id: 'l_w1', title: 'Snackbar Homepage', url: 'https://diviner.agency/snackbar' },
+          { id: 'l_w2', title: 'Contact & Support', url: 'https://diviner.agency/contact' },
+          { id: 'l_w3', title: 'Support Snackbar on Ko-fi', url: 'https://ko-fi.com/divinerone' }
+        ]
+      }
+    ],
+    notes: [
+      { id: 'n_w1', title: 'Welcome to Snackbar!', content: "Hey! I\u2019m Chris, the developer behind Snackbar.\n\nThis is a workspace \u2014 a place to organize links, notes, and todos for a project. You can create as many as you need and switch between them using the icons on the left.\n\nA few things to try:\n\u2022 Click the links above to open them in a new tab\n\u2022 Add your own links by clicking the + button\n\u2022 Switch to Notes or Todos using the tabs at the top\n\u2022 Try the focus timer and activity tracker (icons at the bottom left)\n\nThis starter space is yours to edit or delete. Make it your own!\n\nIf you find Snackbar useful, I\u2019d love your support:\nhttps://ko-fi.com/divinerone\n\nQuestions or issues? Reach out anytime:\nhttps://diviner.agency/contact\n\n\u2014 Chris", pinned: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    ],
+    todos: []
+  }],
+  activeSpaceId: 's_welcome',
+  notes: [],
+  todos: []
 };
 
 // ── State ──
@@ -3314,6 +3339,7 @@ function renderUnscopedNoteEditor(note) {
     }, 500);
   });
   $content.appendChild(textarea);
+  addLinkPreview(textarea);
 }
 
 /** Immediately saves the current unscoped note editor contents. */
@@ -3750,6 +3776,7 @@ async function renderDailyNotepad() {
   });
 
   $content.appendChild(textarea);
+  addLinkPreview(textarea);
 }
 
 // ── Space Notes ──
@@ -3991,6 +4018,7 @@ function renderSpaceNoteEditor(note) {
     }, 500);
   });
   $content.appendChild(textarea);
+  addLinkPreview(textarea);
 }
 
 /** Immediately saves the current note editor contents, cancelling any pending debounce timer. */
@@ -5138,6 +5166,57 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+/** Linkifies URLs in plain text, returning HTML with clickable <a> tags. */
+function linkifyText(text) {
+  return escapeHtml(text).replace(
+    /https?:\/\/[^\s<]+/g,
+    url => `<a href="${url}" class="note-link" target="_blank" rel="noopener">${url}</a>`
+  );
+}
+
+/**
+ * Wraps a textarea with a preview overlay that shows clickable links.
+ * The preview is visible when the textarea is not focused.
+ * Clicking non-link text in the preview focuses the textarea.
+ */
+function addLinkPreview(textarea) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'notepad-textarea-wrap';
+  textarea.parentNode.insertBefore(wrapper, textarea);
+  wrapper.appendChild(textarea);
+
+  const preview = document.createElement('div');
+  preview.className = 'notepad-preview';
+  wrapper.appendChild(preview);
+
+  function updatePreview() {
+    preview.innerHTML = linkifyText(textarea.value) || '<span class="notepad-preview-placeholder">' + escapeHtml(textarea.placeholder) + '</span>';
+  }
+
+  textarea.addEventListener('input', updatePreview);
+  textarea.addEventListener('focus', () => {
+    preview.classList.add('hidden');
+    textarea.classList.remove('hidden');
+  });
+  textarea.addEventListener('blur', () => {
+    updatePreview();
+    preview.classList.remove('hidden');
+    textarea.classList.add('hidden');
+  });
+
+  // Click on preview (non-link) focuses the textarea for editing
+  preview.addEventListener('click', (e) => {
+    if (e.target.closest('.note-link')) return; // let links navigate
+    preview.classList.add('hidden');
+    textarea.classList.remove('hidden');
+    textarea.focus();
+  });
+
+  // Start in preview mode
+  updatePreview();
+  textarea.classList.add('hidden');
 }
 
 /** Shows a modal for adding/editing freeform notes and optional login credentials for a link. */

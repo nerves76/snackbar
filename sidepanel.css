@@ -1247,6 +1247,52 @@ html, body {
   border-color: #0a84ff;
 }
 
+.notepad-textarea-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+.notepad-textarea-wrap .notepad-textarea {
+  flex: 1;
+}
+.notepad-textarea-wrap .notepad-textarea.hidden {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.notepad-preview {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
+  cursor: text;
+  min-height: 0;
+}
+.notepad-preview.hidden {
+  display: none;
+}
+.notepad-preview .note-link {
+  color: #0a84ff;
+  text-decoration: none;
+  cursor: pointer;
+}
+.notepad-preview .note-link:hover {
+  text-decoration: underline;
+}
+.notepad-preview-placeholder {
+  color: var(--text-secondary);
+}
+
 .notepad-status {
   font-size: 11px;
   color: var(--text-secondary);

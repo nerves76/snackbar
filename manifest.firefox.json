@@ -4,28 +4,23 @@
   "version": "1.2",
   "description": "Organize projects with links, notes, and todos. Stay focused with a visual timer that tracks where your time goes.",
   "permissions": [
-    "sidePanel",
     "storage",
     "tabs",
     "idle",
-    "alarms",
-    "identity",
-    "offscreen"
+    "alarms"
   ],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
-  "oauth2": {
-    "client_id": "745168817868-g86tdutmes50332083ub4dv0ts9u4h2l.apps.googleusercontent.com",
-    "scopes": [
-      "https://www.googleapis.com/auth/calendar.readonly",
-      "https://www.googleapis.com/auth/drive.appdata",
-      "https://www.googleapis.com/auth/drive.file"
-    ]
-  },
-  "side_panel": {
-    "default_path": "sidepanel.html"
+  "sidebar_action": {
+    "default_panel": "sidepanel.html",
+    "default_title": "Snackbar",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "background": {
-    "service_worker": "background.js"
+    "scripts": ["background.js"]
   },
   "action": {
     "default_title": "Open Snackbar",
@@ -39,5 +34,11 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "snackbar@snackbar.app",
+      "strict_min_version": "109.0"
+    }
   }
 }
