@@ -1954,6 +1954,19 @@ html, body {
   margin: 0 1px;
 }
 
+.welcome-tip {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  max-width: 240px;
+  line-height: 1.4;
+}
+
+.welcome-tip strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* ── Export Button ── */
 /* Full-width button to export daily activity data */
 .activity-export-btn {

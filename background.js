@@ -28,7 +28,7 @@ async function detectAndSetIcon() {
   } else {
     // Service workers lack matchMedia; fall back to flag the sidepanel writes
     const { systemIsDark } = await chrome.storage.local.get('systemIsDark');
-    setIconForTheme(systemIsDark !== false);
+    setIconForTheme(systemIsDark === true);
   }
 }
 

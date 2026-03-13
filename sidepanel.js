@@ -292,7 +292,7 @@ const DEFAULT_STATE = {
       }
     ],
     notes: [
-      { id: 'n_w1', title: 'Welcome to Snackbar!', content: "Hey! I\u2019m Chris, the developer behind Snackbar.\n\nThis is a workspace \u2014 a place to organize links, notes, and todos for a project. You can create as many as you need and switch between them using the icons on the left.\n\nA few things to try:\n\u2022 Click the links above to open them in a new tab\n\u2022 Add your own links by clicking the + button\n\u2022 Switch to Notes or Todos using the tabs at the top\n\u2022 Try the focus timer and activity tracker (icons at the bottom left)\n\nThis starter space is yours to edit or delete. Make it your own!\n\nIf you find Snackbar useful, I\u2019d love your support:\nhttps://ko-fi.com/divinerone\n\nQuestions or issues? Reach out anytime:\nhttps://diviner.agency/contact\n\n\u2014 Chris", pinned: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+      { id: 'n_w1', title: 'Welcome to Snackbar!', content: "Hey! I\u2019m Chris, the developer behind Snackbar.\n\nThis is a workspace \u2014 a place to organize links, notes, and todos for a project. You can create as many as you need and switch between them using the icons on the left.\n\nA few things to try:\n\u2022 Click the links above to open them in a new tab\n\u2022 Add your own links by clicking the + button\n\u2022 Switch to Notes or Todos using the tabs at the top\n\u2022 Try the focus timer and activity tracker (icons at the bottom left)\n\nThis starter space is yours to edit or delete. Make it your own!\n\nIf you find Snackbar useful, I\u2019d love your support:\nhttps://ko-fi.com/divinerone\n\nQuestions or issues? Reach out anytime:\nhttps://diviner.agency/contact\n\nTip: Sidebar on the wrong side? Go to Chrome Settings \u2192 Appearance to move it left or right.\n\n\u2014 Chris", pinned: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
     ],
     todos: []
   }],
@@ -1186,6 +1186,7 @@ function renderWelcome() {
     <button class="welcome-cta" id="welcomeCreate">Create your first workspace</button>
     <div class="welcome-sync">Already using Snackbar? <a href="#" id="welcomeSync">Sync from Google Drive</a></div>
     <div class="welcome-hint">Press <kbd>T</kbd> <kbd>N</kbd> <kbd>C</kbd> to quickly switch views</div>
+    <div class="welcome-tip">Sidebar on the wrong side? Go to <strong>Chrome Settings &rarr; Appearance</strong> to move it left or right.</div>
   `;
   $content.appendChild(welcome);
   welcome.querySelector('#welcomeCreate').addEventListener('click', () => showSpaceModal(null));
@@ -2692,7 +2693,7 @@ function renderTimerSection() {
     const redRotate = -90 + (0.75 * 360);
     ringWrap.innerHTML = `
       <svg class="timer-ring" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r="54" fill="none" stroke="var(--bg-secondary)" stroke-width="6" />
+        <circle cx="60" cy="60" r="54" fill="none" stroke="var(--border)" stroke-width="6" />
         <circle class="timer-ring-progress" data-segment="green" cx="60" cy="60" r="54" fill="none" stroke="#30d158" stroke-width="6"
           stroke-dasharray="${greenLen} ${circumference - greenLen}"
           transform="rotate(${greenRotate} 60 60)" />
@@ -2707,7 +2708,7 @@ function renderTimerSection() {
     // Stopwatch or idle: empty ring (no fill)
     ringWrap.innerHTML = `
       <svg class="timer-ring" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r="54" fill="none" stroke="var(--bg-secondary)" stroke-width="6" />
+        <circle cx="60" cy="60" r="54" fill="none" stroke="var(--border)" stroke-width="6" />
       </svg>`;
   }
 
@@ -4563,7 +4564,12 @@ async function renderCalendarView() {
     events = await fetchCalendarEvents(calendarDate);
   } catch (e) {
     const msg = e.message || String(e);
-    loadingEl.innerHTML = `<strong>Calendar error:</strong><br><br>${escapeHtml(msg)}<br><br>Check that:<br>1. Calendar API is enabled in Google Cloud<br>2. OAuth client type is "Chrome extension"<br>3. Extension ID is added to the OAuth client`;
+    const isBadClient = /bad client|unauthorized|invalid_client/i.test(msg);
+    if (isBadClient) {
+      loadingEl.innerHTML = `<strong>Google Calendar isn\u2019t connected yet.</strong><br><br>Sign in with Google to see your events here. If the sign-in prompt didn\u2019t appear, click Retry below.`;
+    } else {
+      loadingEl.innerHTML = `<strong>Calendar error:</strong><br><br>${escapeHtml(msg)}`;
+    }
     appendRetryButton(loadingEl);
     return;
   }
