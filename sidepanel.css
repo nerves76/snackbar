@@ -2185,6 +2185,25 @@ html, body {
   background: rgba(10, 132, 255, 0.08);
 }
 
+/* Radio group — used for link behavior and similar settings */
+.settings-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settings-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+.settings-radio-label input[type="radio"] {
+  accent-color: #0a84ff;
+  margin: 0;
+}
+
 /* Shortcuts — keyboard shortcut display rows with <kbd> badges */
 .settings-shortcut {
   display: flex;

@@ -312,7 +312,8 @@ let features = {
   activity: true,
   notepad: true,
   calendar: true,
-  focusTimer: true
+  focusTimer: true,
+  linkBehavior: 'current' // 'current' or 'new'
 };
 // Built-in app presets for opening links in editors/terminals via custom URL schemes
 const APP_PRESETS = [
@@ -405,21 +406,11 @@ function getActiveSpace() {
 
 let currentTheme = 'system'; // 'system', 'light', 'dark'
 
-/** Notifies the background script of the current effective theme so the toolbar icon can match. */
-function notifyIconTheme() {
-  const systemDark = matchMedia('(prefers-color-scheme: dark)').matches;
-  const isDark = currentTheme === 'dark' ||
-    (currentTheme === 'system' && systemDark);
-  chrome.storage.local.set({ systemIsDark: systemDark });
-  chrome.runtime.sendMessage({ type: 'themeChanged', isDark });
-}
-
 /** Reads persisted theme preference and applies it to the document root. */
 async function applyTheme() {
   const { theme } = await chrome.storage.local.get('theme');
   currentTheme = theme || 'system';
   document.documentElement.setAttribute('data-theme', currentTheme);
-  notifyIconTheme();
 }
 
 /** Cycles through system -> light -> dark and persists the choice. */
@@ -429,11 +420,7 @@ async function cycleTheme() {
   currentTheme = order[(idx + 1) % order.length];
   document.documentElement.setAttribute('data-theme', currentTheme);
   await chrome.storage.local.set({ theme: currentTheme });
-  notifyIconTheme();
 }
-
-// Re-evaluate icon theme when OS dark mode changes
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => notifyIconTheme());
 
 /** Loads feature toggles and app-links config from storage, merging with defaults. */
 async function loadFeatures() {
@@ -917,8 +904,12 @@ async function openLink(url) {
     window.open(url, '_blank');
     return;
   }
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab) chrome.tabs.update(tab.id, { url });
+  if (features.linkBehavior === 'new') {
+    chrome.tabs.create({ url });
+  } else {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab) chrome.tabs.update(tab.id, { url });
+  }
 }
 
 /** Opens every link in a group, each in a new background tab. */
@@ -1857,6 +1848,30 @@ function renderSettingsMain() {
   });
   themeSection.appendChild(themeRow);
   wrap.appendChild(themeSection);
+
+  // Link behavior section
+  const linkSection = createSettingsSection('Open links in');
+  const linkRow = document.createElement('div');
+  linkRow.className = 'settings-radio-group';
+  [{ key: 'current', label: 'Current tab' },
+   { key: 'new', label: 'New tab' }].forEach(({ key, label }) => {
+    const radioLabel = document.createElement('label');
+    radioLabel.className = 'settings-radio-label';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'linkBehavior';
+    radio.value = key;
+    radio.checked = features.linkBehavior === key;
+    radio.addEventListener('change', async () => {
+      features.linkBehavior = key;
+      await saveFeatures();
+    });
+    radioLabel.appendChild(radio);
+    radioLabel.appendChild(document.createTextNode(label));
+    linkRow.appendChild(radioLabel);
+  });
+  linkSection.appendChild(linkRow);
+  wrap.appendChild(linkSection);
 
   // Keyboard shortcuts
   const kbSection = createSettingsSection('Keyboard Shortcuts');

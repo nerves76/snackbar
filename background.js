@@ -1,44 +1,9 @@
 // Open sidepanel when user clicks the extension icon (instead of a popup)
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
-// ── Theme-aware Icon ──
+// ── Message Listener ──
 
-/** Sets the toolbar icon variant to match the current light/dark theme. */
-function setIconForTheme(isDark) {
-  const suffix = isDark ? '-dark' : '';
-  chrome.action.setIcon({
-    path: {
-      16: `icons/icon16${suffix}.png`,
-      48: `icons/icon48${suffix}.png`,
-      128: `icons/icon128${suffix}.png`
-    }
-  });
-}
-
-/** Resolves the effective theme (explicit > system > fallback) and updates the icon. */
-async function detectAndSetIcon() {
-  const { theme } = await chrome.storage.local.get('theme');
-  // If user chose explicit light/dark, use that
-  if (theme === 'dark') return setIconForTheme(true);
-  if (theme === 'light') return setIconForTheme(false);
-  // For 'system' or unset, check via offscreen trick or default to dark
-  // Chrome toolbar follows system theme, so assume dark if we can't detect
-  if (typeof matchMedia !== 'undefined') {
-    setIconForTheme(matchMedia('(prefers-color-scheme: dark)').matches);
-  } else {
-    // Service workers lack matchMedia; fall back to flag the sidepanel writes
-    const { systemIsDark } = await chrome.storage.local.get('systemIsDark');
-    setIconForTheme(systemIsDark === true);
-  }
-}
-
-// Sidepanel sends 'themeChanged' when user toggles theme in the UI
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === 'themeChanged') {
-    setIconForTheme(msg.isDark);
-    return;
-  }
-
   // Recording commands from side panel — ensure offscreen doc exists, then forward
   if (msg.type === 'start-recording') {
     ensureOffscreen()
@@ -110,14 +75,6 @@ async function ensureOffscreen() {
     justification: 'Microphone recording for voice transcription'
   });
 }
-
-// Also react to storage changes (covers sidepanel writes we didn't receive via message)
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.theme || changes.systemIsDark) detectAndSetIcon();
-});
-
-// Set icon immediately on service worker startup
-detectAndSetIcon();
 
 // ── Time Tracking ──
 
