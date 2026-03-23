@@ -669,6 +669,9 @@ html, body {
   cursor: pointer;
   font-size: 12px;
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .modal-btn:hover {
@@ -2366,6 +2369,18 @@ select.settings-terminal-input {
 .settings-sync-btn:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.sync-confirm-summary {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0 16px;
+}
+.sync-confirm-summary strong {
+  color: var(--text);
 }
 
 .settings-sync-status {

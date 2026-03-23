@@ -585,44 +585,87 @@ async function uploadSyncFile(token, data, existingFileId) {
   }
 }
 
-/**
- * Performs a last-write-wins sync with Google Drive.
- * Compares remote vs local timestamps: pulls if remote is newer, pushes otherwise.
- * @returns {'pulled'|'pushed'} which direction the sync went.
- */
-async function syncToCloud() {
+/** Checks what's on Drive and returns summary info for the confirmation dialog. */
+async function checkCloudSync() {
   const token = await getDriveToken();
   const localData = await chrome.storage.local.get(SYNC_KEYS);
-  localData.syncedAt = Date.now();
-
+  const localSpaces = (localData.spaces || []).length;
   const existing = await findSyncFile(token);
-
+  let remoteSpaces = 0;
+  let remoteDate = null;
   if (existing) {
     const remote = await downloadSyncFile(token, existing.id);
-    const remoteTime = remote.syncedAt || 0;
-    const localTime = (await chrome.storage.local.get('lastSyncedAt')).lastSyncedAt || 0;
+    remoteSpaces = (remote.spaces || []).length;
+    remoteDate = remote.syncedAt ? new Date(remote.syncedAt) : null;
+  }
+  return { token, localData, localSpaces, existing, remoteSpaces, remoteDate };
+}
 
-    if (remoteTime > localTime) {
-      // Remote is newer — pull
-      const { syncedAt, ...rest } = remote;
-      await chrome.storage.local.set(rest);
-      await chrome.storage.local.set({ lastSyncedAt: syncedAt });
-      await loadState();
-      await loadFeatures();
-      await applyTheme();
-      render();
-      return 'pulled';
-    } else {
-      // Local is newer or same — push
-      await uploadSyncFile(token, localData, existing.id);
-      await chrome.storage.local.set({ lastSyncedAt: localData.syncedAt });
-      return 'pushed';
-    }
-  } else {
-    // No remote file — push
-    await uploadSyncFile(token, localData, null);
-    await chrome.storage.local.set({ lastSyncedAt: localData.syncedAt });
-    return 'pushed';
+/** Pushes local data to Google Drive, overwriting the remote copy. */
+async function pushToCloud(token, localData, existing) {
+  localData.syncedAt = Date.now();
+  await uploadSyncFile(token, localData, existing ? existing.id : null);
+  await chrome.storage.local.set({ lastSyncedAt: localData.syncedAt });
+}
+
+/** Pulls remote data from Google Drive, overwriting local data. */
+async function pullFromCloud(token, existing) {
+  if (!existing) throw new Error('No data found on Google Drive');
+  const remote = await downloadSyncFile(token, existing.id);
+  const { syncedAt, ...rest } = remote;
+  await chrome.storage.local.set(rest);
+  await chrome.storage.local.set({ lastSyncedAt: syncedAt || Date.now() });
+  await loadState();
+  await loadFeatures();
+  await applyTheme();
+  render();
+}
+
+/** Shows a modal letting the user choose to push or pull, with a summary of both sides. */
+function showSyncConfirmModal(info, settingsWrap) {
+  const { token, localData, localSpaces, existing, remoteSpaces, remoteDate } = info;
+  const remoteDateStr = remoteDate
+    ? remoteDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' at ' + remoteDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    : 'never';
+  const cloudLine = existing
+    ? `Cloud: <strong>${remoteSpaces} space${remoteSpaces !== 1 ? 's' : ''}</strong> (saved ${remoteDateStr})`
+    : 'Cloud: <strong>no data</strong>';
+
+  showModal(`
+    <div class="modal-title">Sync</div>
+    <div class="sync-confirm-summary">
+      <div>Local: <strong>${localSpaces} space${localSpaces !== 1 ? 's' : ''}</strong></div>
+      <div>${cloudLine}</div>
+    </div>
+    <div class="modal-buttons">
+      <button class="modal-btn" id="syncCancel">Cancel</button>
+      ${existing ? `<button class="modal-btn" id="syncPull">${createLucideIcon('download', 14).outerHTML} Pull from cloud</button>` : ''}
+      <button class="modal-btn primary" id="syncPush">${createLucideIcon('upload', 14).outerHTML} Save to cloud</button>
+    </div>
+  `);
+
+  document.getElementById('syncCancel').addEventListener('click', closeModal);
+
+  document.getElementById('syncPush').addEventListener('click', async () => {
+    closeModal();
+    try {
+      await pushToCloud(token, localData, existing);
+      exportNotesToCloud().catch(e => console.warn('Background cloud save failed:', e));
+      const statusEl = settingsWrap.querySelector('.settings-sync-status');
+      if (statusEl) statusEl.textContent = 'Last synced: just now';
+    } catch (e) { console.error('Push failed:', e); }
+  });
+
+  const pullBtn = document.getElementById('syncPull');
+  if (pullBtn) {
+    pullBtn.addEventListener('click', async () => {
+      closeModal();
+      try {
+        await pullFromCloud(token, existing);
+        const statusEl = settingsWrap.querySelector('.settings-sync-status');
+        if (statusEl) statusEl.textContent = 'Last synced: just now';
+      } catch (e) { console.error('Pull failed:', e); }
+    });
   }
 }
 
@@ -1189,9 +1232,10 @@ function renderWelcome() {
     try {
       syncEnabled = true;
       await saveSyncConfig();
-      const result = await syncToCloud();
-      if (result === 'pulled') {
-        render();
+      const token = await getDriveToken();
+      const existing = await findSyncFile(token);
+      if (existing) {
+        await pullFromCloud(token, existing);
       } else {
         link.textContent = 'No existing data found — create a workspace to get started';
       }
@@ -2408,33 +2452,27 @@ function renderSettingsSync() {
   const help = document.createElement('div');
   help.className = 'settings-help-block';
   help.innerHTML = `
-    <div class="help-item"><strong>How it works</strong><p>When you click "Sync now", Snackbar stores a copy of your data in a hidden app folder on your Google Drive. On another computer with the same Google account, syncing pulls that data down.</p></div>
+    <div class="help-item"><strong>How it works</strong><p>When you click "Sync now", Snackbar checks your Google Drive for existing data and lets you choose whether to push or pull.</p></div>
     <div class="help-item"><strong>Google account required</strong><p>The first time you sync, Chrome will ask you to sign in and grant Snackbar access to its own app folder. This folder is private — it won't appear in your Drive files.</p></div>
-    <div class="help-item"><strong>Last write wins</strong><p>If you make changes on two computers, the most recent sync overwrites the older one. Sync often to stay current.</p></div>
   `;
   wrap.appendChild(help);
 
-  // Sync now button
+  // Sync now button — shows confirmation before acting
   const syncBtn = document.createElement('button');
   syncBtn.className = 'settings-sync-btn';
   syncBtn.innerHTML = createLucideIcon('cloud', 16).outerHTML + '<span>Sync now</span>';
   syncBtn.addEventListener('click', async () => {
     syncBtn.disabled = true;
-    syncBtn.querySelector('span').textContent = 'Syncing...';
+    syncBtn.querySelector('span').textContent = 'Checking...';
     try {
-      const result = await syncToCloud();
-      exportNotesToCloud().catch(e => console.warn('Background cloud save failed:', e));
-      syncBtn.querySelector('span').textContent = result === 'pulled' ? 'Updated from cloud' : 'Backed up to cloud';
-      const statusEl = wrap.querySelector('.settings-sync-status');
-      if (statusEl) statusEl.textContent = 'Last synced: just now';
+      const info = await checkCloudSync();
+      showSyncConfirmModal(info, wrap);
     } catch (e) {
       syncBtn.querySelector('span').textContent = 'Sync failed: ' + e.message;
       console.error('Sync error:', e);
     }
     syncBtn.disabled = false;
-    setTimeout(() => {
-      syncBtn.innerHTML = createLucideIcon('cloud', 16).outerHTML + '<span>Sync now</span>';
-    }, 2500);
+    syncBtn.innerHTML = createLucideIcon('cloud', 16).outerHTML + '<span>Sync now</span>';
   });
   wrap.appendChild(syncBtn);
 
