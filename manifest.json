@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Snackbar",
-  "version": "1.4",
+  "version": "1.5",
   "description": "Organize projects with links, notes, and todos. Stay focused with a visual timer that tracks where your time goes.",
   "permissions": [
     "sidePanel",
