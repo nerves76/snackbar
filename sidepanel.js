@@ -637,10 +637,12 @@ function showSyncConfirmModal(info, settingsWrap) {
       <div>Local: <strong>${localSpaces} space${localSpaces !== 1 ? 's' : ''}</strong></div>
       <div>${cloudLine}</div>
     </div>
-    <div class="modal-buttons">
+    <div class="modal-buttons sync-buttons">
+      ${existing ? `<button class="modal-btn" id="syncPull">Pull from cloud</button>` : ''}
+      <button class="modal-btn primary" id="syncPush">Save to cloud</button>
+    </div>
+    <div class="modal-buttons sync-cancel-row">
       <button class="modal-btn" id="syncCancel">Cancel</button>
-      ${existing ? `<button class="modal-btn" id="syncPull">${createLucideIcon('download', 14).outerHTML} Pull from cloud</button>` : ''}
-      <button class="modal-btn primary" id="syncPush">${createLucideIcon('upload', 14).outerHTML} Save to cloud</button>
     </div>
   `);
 

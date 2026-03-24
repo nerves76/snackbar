@@ -2371,6 +2371,18 @@ select.settings-terminal-input {
   cursor: default;
 }
 
+.sync-buttons .modal-btn {
+  flex: 1;
+  justify-content: center;
+}
+.sync-cancel-row {
+  margin-top: 4px;
+}
+.sync-cancel-row .modal-btn {
+  width: 100%;
+  justify-content: center;
+}
+
 .sync-confirm-summary {
   font-size: 13px;
   color: var(--text-secondary);
