@@ -313,7 +313,7 @@ let features = {
   notepad: true,
   calendar: true,
   focusTimer: true,
-  linkBehavior: 'current' // 'current' or 'new'
+  linkBehavior: 'new' // 'current' or 'new'
 };
 // Built-in app presets for opening links in editors/terminals via custom URL schemes
 const APP_PRESETS = [
