@@ -176,9 +176,9 @@ const ICON_CATEGORIES = {
   'Tools': ['wrench', 'timer', 'battery'],
 };
 
-/** Checks if the URL uses the terminal:// custom protocol. */
+/** Checks if the URL uses a terminal scheme (terminal:// via Hatch, or crystl://). */
 function isTerminalUrl(url) {
-  return /^terminal:\/\//i.test(url.trim());
+  return /^(terminal|crystl):\/\//i.test(url.trim());
 }
 
 /** Prepends https:// if no protocol scheme is present. Leaves custom schemes intact. */
@@ -319,6 +319,7 @@ let features = {
 const APP_PRESETS = [
   { id: 'vscode', name: 'VS Code', scheme: 'vscode://file/', usesBasePath: true, type: 'editor' },
   { id: 'cursor', name: 'Cursor', scheme: 'cursor://file/', usesBasePath: true, type: 'editor' },
+  { id: 'crystl', name: 'Crystl', scheme: 'crystl://', usesBasePath: true, type: 'terminal' },
   { id: 'terminal', name: 'Terminal', scheme: 'terminal://default/', usesBasePath: true, type: 'terminal' },
   { id: 'iterm', name: 'iTerm', scheme: 'terminal://iterm/', usesBasePath: true, type: 'terminal' },
   { id: 'warp', name: 'Warp', scheme: 'terminal://warp/', usesBasePath: true, type: 'terminal' },
@@ -946,7 +947,7 @@ function isCustomScheme(url) {
 async function openLink(url) {
   url = normalizeUrl(url);
   if (isCustomScheme(url)) {
-    window.open(url, '_blank');
+    chrome.tabs.create({ url });
     return;
   }
   if (features.linkBehavior === 'new') {
@@ -962,7 +963,7 @@ function openAllInGroup(group) {
   group.links.forEach(link => {
     const url = normalizeUrl(link.url);
     if (isCustomScheme(url)) {
-      window.open(url, '_blank');
+      chrome.tabs.create({ url });
     } else {
       chrome.tabs.create({ url, active: false });
     }
@@ -2085,12 +2086,27 @@ function renderSettingsAppLinks() {
   renderAppCheckboxes(editorsField, APP_PRESETS.filter(p => p.type === 'editor'));
   wrap.appendChild(editorsField);
 
-  // Terminals section
+  // Crystl section — built-in terminal with its own URL scheme, no Hatch needed
+  const crystlField = document.createElement('div');
+  crystlField.className = 'settings-terminal-field';
+  const crystlLabel = document.createElement('label');
+  crystlLabel.className = 'settings-row-label';
+  crystlLabel.textContent = 'Open terminal sessions with Crystl';
+  crystlField.appendChild(crystlLabel);
+  const crystlDesc = document.createElement('div');
+  crystlDesc.className = 'settings-row-desc';
+  crystlDesc.style.marginBottom = '8px';
+  crystlDesc.innerHTML = 'Crystl is our own macOS terminal — works out of the box, no helper app required. <a href="https://crystl.dev" target="_blank">crystl.dev</a>';
+  crystlField.appendChild(crystlDesc);
+  renderAppCheckboxes(crystlField, APP_PRESETS.filter(p => p.id === 'crystl'));
+  wrap.appendChild(crystlField);
+
+  // Other terminals section — routed through Hatch
   const terminalsField = document.createElement('div');
   terminalsField.className = 'settings-terminal-field';
   const terminalsLabel = document.createElement('label');
   terminalsLabel.className = 'settings-row-label';
-  terminalsLabel.textContent = 'Terminals';
+  terminalsLabel.textContent = 'Open sessions in other terminals with Hatch';
   terminalsField.appendChild(terminalsLabel);
   const terminalsDesc = document.createElement('div');
   terminalsDesc.className = 'settings-row-desc';
@@ -2104,11 +2120,11 @@ function renderSettingsAppLinks() {
     ${createLucideIcon('info', 14).outerHTML}
     <div>
       <strong>One-time setup required</strong>
-      <div class="settings-row-desc" style="margin-top:2px">Terminals need <strong>Hatch</strong>, a free helper app for macOS, to handle <code>terminal://</code> links. <a href="https://github.com/nerves76/hatch" target="_blank">Get Hatch</a></div>
+      <div class="settings-row-desc" style="margin-top:2px">These terminals need <strong>Hatch</strong>, a free helper app for macOS, to handle <code>terminal://</code> links. <a href="https://github.com/nerves76/hatch" target="_blank">Get Hatch</a></div>
     </div>
   `;
   terminalsField.appendChild(setupNote);
-  renderAppCheckboxes(terminalsField, APP_PRESETS.filter(p => p.type === 'terminal'));
+  renderAppCheckboxes(terminalsField, APP_PRESETS.filter(p => p.type === 'terminal' && p.id !== 'crystl'));
   wrap.appendChild(terminalsField);
 
   // Tip for custom schemes
@@ -5098,15 +5114,30 @@ function showLinkModal(existing, type, groupId) {
   // Try to match existing URL to an enabled preset so the form pre-fills correctly
   let matchedAppIndex = -1;
   let existingPath = '';
+  let isSsh = false;
+  let sshHost = '';
+  let sshPath = '';
   if (isApp && hasApps) {
     apps.forEach((app, i) => {
       if (existing.url.startsWith(app.scheme)) {
         matchedAppIndex = i;
-        let path = existing.url.slice(app.scheme.length);
-        if (app.usesBasePath && appLinksConfig.basePath && path.startsWith(appLinksConfig.basePath)) {
-          path = path.slice(appLinksConfig.basePath.length);
+        let rest = existing.url.slice(app.scheme.length);
+        if (app.id === 'crystl' && rest.startsWith('ssh/')) {
+          isSsh = true;
+          const after = rest.slice(4);
+          const slashIdx = after.indexOf('/');
+          if (slashIdx >= 0) {
+            sshHost = after.slice(0, slashIdx);
+            sshPath = after.slice(slashIdx);
+          } else {
+            sshHost = after;
+          }
+        } else {
+          if (app.usesBasePath && appLinksConfig.basePath && rest.startsWith(appLinksConfig.basePath)) {
+            rest = rest.slice(appLinksConfig.basePath.length);
+          }
+          existingPath = rest;
         }
-        existingPath = path;
       }
     });
   }
@@ -5135,13 +5166,30 @@ function showLinkModal(existing, type, groupId) {
           ${apps.map((a, i) => `<option value="${i}" ${i === matchedAppIndex ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}
         </select>
       </div>
-      <div class="modal-field">
+      <div class="modal-field" id="mCrystlModeField" style="display:none">
+        <label>Connection</label>
+        <div class="modal-toggle" id="mCrystlModeToggle">
+          <button class="toggle-btn ${isSsh ? '' : 'active'}" data-mode="local">Local</button>
+          <button class="toggle-btn ${isSsh ? 'active' : ''}" data-mode="ssh">SSH</button>
+        </div>
+      </div>
+      <div class="modal-field" id="mLocalPathField">
         <label>Path ${(() => {
           const idx = matchedAppIndex >= 0 ? matchedAppIndex : 0;
           const a = apps[idx];
           return a && a.usesBasePath && appLinksConfig.basePath ? `<span class="terminal-path-hint">${appLinksConfig.basePath}</span>` : '';
         })()}</label>
         <input type="text" id="mAppPath" value="${escapeHtml(existingPath)}" placeholder="project/folder">
+      </div>
+      <div id="mSshFields" style="display:none">
+        <div class="modal-field">
+          <label>Host</label>
+          <input type="text" id="mSshHost" value="${escapeHtml(sshHost)}" placeholder="user@hostname">
+        </div>
+        <div class="modal-field">
+          <label>Remote path</label>
+          <input type="text" id="mSshPath" value="${escapeHtml(sshPath)}" placeholder="/var/log">
+        </div>
       </div>
     </div>` : ''}
     <div class="modal-buttons">
@@ -5151,9 +5199,9 @@ function showLinkModal(existing, type, groupId) {
   `);
 
   // Toggle between web and app
-  $modal.querySelectorAll('.toggle-btn').forEach(btn => {
+  $modal.querySelectorAll('#mTypeToggle .toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      $modal.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      $modal.querySelectorAll('#mTypeToggle .toggle-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const isAppMode = btn.dataset.type === 'app';
       $modal.querySelector('#mWebFields').style.display = isAppMode ? 'none' : '';
@@ -5162,18 +5210,45 @@ function showLinkModal(existing, type, groupId) {
     });
   });
 
-  // Update path hint when app selection changes
+  // Show/hide Crystl Local/SSH toggle and swap path fields based on app + mode
+  function applyCrystlMode() {
+    const sel = $modal.querySelector('#mAppSelect');
+    if (!sel) return;
+    const app = apps[parseInt(sel.value)];
+    const isCrystl = !!(app && app.id === 'crystl');
+    const modeField = $modal.querySelector('#mCrystlModeField');
+    if (modeField) modeField.style.display = isCrystl ? '' : 'none';
+    const activeMode = $modal.querySelector('#mCrystlModeToggle .toggle-btn.active');
+    const sshActive = isCrystl && activeMode && activeMode.dataset.mode === 'ssh';
+    const localField = $modal.querySelector('#mLocalPathField');
+    const sshFields = $modal.querySelector('#mSshFields');
+    if (localField) localField.style.display = sshActive ? 'none' : '';
+    if (sshFields) sshFields.style.display = sshActive ? '' : 'none';
+  }
+
+  // Update path hint when app selection changes, and refresh Crystl mode visibility
   const appSelect = $modal.querySelector('#mAppSelect');
   if (appSelect) {
     appSelect.addEventListener('change', () => {
       const app = apps[parseInt(appSelect.value)];
-      const label = $modal.querySelector('#mAppFields label');
+      const label = $modal.querySelector('#mLocalPathField label');
       if (label && app) {
         const hint = app.usesBasePath && appLinksConfig.basePath ? appLinksConfig.basePath : '';
         label.innerHTML = `Path ${hint ? `<span class="terminal-path-hint">${hint}</span>` : ''}`;
       }
+      applyCrystlMode();
     });
   }
+
+  $modal.querySelectorAll('#mCrystlModeToggle .toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $modal.querySelectorAll('#mCrystlModeToggle .toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyCrystlMode();
+    });
+  });
+
+  applyCrystlMode();
 
   $modal.querySelector('#mCancel').addEventListener('click', closeModal);
   $modal.querySelector('#mSave').addEventListener('click', async () => {
@@ -5184,10 +5259,20 @@ function showLinkModal(existing, type, groupId) {
     if (isAppMode) {
       const appIndex = parseInt($modal.querySelector('#mAppSelect').value);
       const app = apps[appIndex];
-      const path = $modal.querySelector('#mAppPath').value.trim();
       if (!title || !app) return;
-      const basePath = app.usesBasePath ? appLinksConfig.basePath : '';
-      url = app.scheme + basePath + path;
+      const sshToggle = $modal.querySelector('#mCrystlModeToggle .toggle-btn.active');
+      const sshActive = app.id === 'crystl' && sshToggle && sshToggle.dataset.mode === 'ssh';
+      if (sshActive) {
+        const host = $modal.querySelector('#mSshHost').value.trim();
+        const remotePath = $modal.querySelector('#mSshPath').value.trim();
+        if (!host) return;
+        const normalizedPath = remotePath ? (remotePath.startsWith('/') ? remotePath : '/' + remotePath) : '';
+        url = `crystl://ssh/${host}${normalizedPath}`;
+      } else {
+        const path = $modal.querySelector('#mAppPath').value.trim();
+        const basePath = app.usesBasePath ? appLinksConfig.basePath : '';
+        url = app.scheme + basePath + path;
+      }
     } else {
       url = $modal.querySelector('#mLUrl').value.trim();
       if (!title || !url) return;
