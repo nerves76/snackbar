@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "Snackbar",
   "version": "1.6",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmxJthkBliHouu3/woz1mVhefu3+0lvO21GmS3Djzl3GMsm8PlaYoJ3k90LUQbRwWW6m4s7sJxmJ9CzJJhHNN2eKDqPXsQcCk3IGzoqdPDsWwUade7n62+DabRS4pehuA4BNege8W2tmJb//vNwkiXoF0fBucl0fI7VtE4kwUPYrwZXoY49I7jmIURxUN0YJbSRpPLYExYqhVyIJLVmcosdmJufyHa9qChpgj5upLkmT/GgVJfJHh+O1MVduCzvmTtm68lpeL8I3oC5rq6MQsDRXSY9I4RaUtsZwf67CkwDFSzWk9yVxNwlZmyP4hN7EibTNuFY1sHYSyevGIpDyi4QIDAQAB",
   "description": "Organize projects with links, notes, and todos. Stay focused with a visual timer that tracks where your time goes.",
   "permissions": [
     "sidePanel",
