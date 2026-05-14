@@ -101,8 +101,8 @@ def main():
 
         # Hide sync row in settings (Google Drive only)
         (
-            "  const syncDesc = syncEnabled ? 'Google Drive' : 'Not configured';",
-            "  const syncDesc = syncEnabled ? 'Google Drive' : 'Not configured';\n"
+            "  const syncDesc = syncEnabled ? 'Daily backup to Google Drive' : 'Off';",
+            "  const syncDesc = syncEnabled ? 'Daily backup to Google Drive' : 'Off';\n"
             "  if (!IS_FIREFOX)"
         ),
 

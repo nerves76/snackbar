@@ -609,6 +609,24 @@ async function pushToCloud(token, localData, existing) {
   await chrome.storage.local.set({ lastSyncedAt: localData.syncedAt });
 }
 
+/** Silent daily push when Auto-save is on. Skips if not authed yet or last push < 24h ago. */
+async function maybeAutoSync() {
+  if (!syncEnabled) return;
+  const { lastSyncedAt } = await chrome.storage.local.get('lastSyncedAt');
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  if (lastSyncedAt && Date.now() - lastSyncedAt < DAY_MS) return;
+  try {
+    const result = await chrome.identity.getAuthToken({ interactive: false });
+    const token = result?.token || result;
+    if (!token) return;
+    const localData = await chrome.storage.local.get(SYNC_KEYS);
+    const existing = await findSyncFile(token);
+    await pushToCloud(token, localData, existing);
+  } catch (e) {
+    console.warn('Auto-save skipped:', e);
+  }
+}
+
 /** Pulls remote data from Google Drive, overwriting local data. */
 async function pullFromCloud(token, existing) {
   if (!existing) throw new Error('No data found on Google Drive');
@@ -1859,9 +1877,9 @@ function renderSettingsMain() {
     }
   }, () => { settingsSubPanel = 'notes-export'; renderSettingsView(); }));
 
-  // Sync: toggle + gear
-  const syncDesc = syncEnabled ? 'Google Drive' : 'Not configured';
-  intSection.appendChild(createToggleRow('cloud', 'Sync', syncDesc, syncEnabled, async (checked) => {
+  // Auto-save: toggle + gear
+  const syncDesc = syncEnabled ? 'Daily backup to Google Drive' : 'Off';
+  intSection.appendChild(createToggleRow('cloud', 'Auto-save', syncDesc, syncEnabled, async (checked) => {
     syncEnabled = checked;
     await saveSyncConfig();
     if (checked) {
@@ -2456,7 +2474,7 @@ function renderSettingsSync() {
   const wrap = document.createElement('div');
   wrap.className = 'settings-view';
 
-  wrap.appendChild(createSettingsBackTitle('Sync', async () => {
+  wrap.appendChild(createSettingsBackTitle('Auto-save', async () => {
     settingsSubPanel = null;
     renderSettingsView();
   }));
@@ -2464,13 +2482,14 @@ function renderSettingsSync() {
   const desc = document.createElement('div');
   desc.className = 'settings-row-desc';
   desc.style.marginBottom = '12px';
-  desc.textContent = 'Keep your spaces, notes, and settings in sync across computers using Google Drive.';
+  desc.textContent = 'Auto-save backs up your spaces, notes, and settings to Google Drive once a day. Use Sync now to push or pull manually when switching computers.';
   wrap.appendChild(desc);
 
   const help = document.createElement('div');
   help.className = 'settings-help-block';
   help.innerHTML = `
-    <div class="help-item"><strong>How it works</strong><p>When you click "Sync now", Snackbar checks your Google Drive for existing data and lets you choose whether to push or pull.</p></div>
+    <div class="help-item"><strong>Auto-save</strong><p>When Auto-save is on, Snackbar quietly pushes your data to Google Drive once a day, the next time you open the side panel.</p></div>
+    <div class="help-item"><strong>Sync now</strong><p>Click this to check your Google Drive immediately and choose whether to push local data up or pull cloud data down — useful when switching computers.</p></div>
     <div class="help-item"><strong>Google account required</strong><p>The first time you sync, Chrome will ask you to sign in and grant Snackbar access to its own app folder. This folder is private — it won't appear in your Drive files.</p></div>
   `;
   wrap.appendChild(help);
@@ -5401,6 +5420,7 @@ async function init() {
   await loadFocusTimerState();
   applyTheme();
   render();
+  maybeAutoSync();
 
   // Global keyboard shortcuts — ignored when focus is in form fields
   document.addEventListener('keydown', (e) => {
