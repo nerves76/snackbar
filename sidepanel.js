@@ -1668,6 +1668,30 @@ function renderContent() {
     const subgroupsEl = document.createElement('div');
     subgroupsEl.className = 'group-subgroups';
     subgroupsEl.dataset.groupId = group.id;
+    subgroupsEl.addEventListener('dragover', (e) => {
+      const dragging = document.querySelector('.subgroup.dragging');
+      if (!dragging) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    subgroupsEl.addEventListener('drop', (e) => {
+      const dragging = document.querySelector('.subgroup.dragging');
+      if (!dragging) return;
+      let data;
+      try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+      if (data.kind !== 'subgroup') return;
+      // If the drop bubbled up from a child .subgroup, that handler already ran — bail
+      const targetSubgroup = e.target.closest('.subgroup');
+      if (targetSubgroup && subgroupsEl.contains(targetSubgroup)) return;
+      e.preventDefault();
+      const space = getActiveSpace();
+      const targetParent = space.groups.find(g => g.id === group.id);
+      if (!targetParent) return;
+      targetParent.subgroups = targetParent.subgroups || [];
+      moveSubgroup(data.parentGroupId, group.id, data.subgroupId, targetParent.subgroups.length);
+    });
+
     (group.subgroups || []).forEach(subgroup => {
       subgroupsEl.appendChild(createSubgroupElement(group, subgroup));
     });
@@ -1785,6 +1809,25 @@ function createSubgroupElement(parentGroup, subgroup) {
 
   const header = document.createElement('div');
   header.className = 'subgroup-header';
+  header.draggable = true;
+  header.addEventListener('dragstart', (e) => {
+    e.stopPropagation();
+    e.dataTransfer.setData('text/plain', JSON.stringify({
+      kind: 'subgroup',
+      subgroupId: subgroup.id,
+      parentGroupId: parentGroup.id
+    }));
+    e.dataTransfer.effectAllowed = 'move';
+    header.classList.add('dragging');
+    sgEl.classList.add('dragging');
+  });
+  header.addEventListener('dragend', () => {
+    header.classList.remove('dragging');
+    sgEl.classList.remove('dragging');
+    document.querySelectorAll('.subgroup-drag-above, .subgroup-drag-below').forEach(el => {
+      el.classList.remove('subgroup-drag-above', 'subgroup-drag-below');
+    });
+  });
 
   const toggle = document.createElement('span');
   toggle.className = 'group-toggle';
@@ -1816,6 +1859,50 @@ function createSubgroupElement(parentGroup, subgroup) {
 
   header.addEventListener('click', () => toggleSubgroup(parentGroup.id, subgroup.id));
   sgEl.appendChild(header);
+
+  sgEl.addEventListener('dragover', (e) => {
+    const dragging = document.querySelector('.subgroup.dragging');
+    if (!dragging) return;
+    if (dragging === sgEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.subgroup-drag-above, .subgroup-drag-below').forEach(el => {
+      el.classList.remove('subgroup-drag-above', 'subgroup-drag-below');
+    });
+    const rect = sgEl.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    sgEl.classList.add(e.clientY < mid ? 'subgroup-drag-above' : 'subgroup-drag-below');
+  });
+
+  sgEl.addEventListener('dragleave', (e) => {
+    if (!sgEl.contains(e.relatedTarget)) {
+      sgEl.classList.remove('subgroup-drag-above', 'subgroup-drag-below');
+    }
+  });
+
+  sgEl.addEventListener('drop', (e) => {
+    const above = sgEl.classList.contains('subgroup-drag-above');
+    const below = sgEl.classList.contains('subgroup-drag-below');
+    if (!above && !below) return;
+    e.preventDefault();
+    e.stopPropagation();
+    sgEl.classList.remove('subgroup-drag-above', 'subgroup-drag-below');
+
+    let data;
+    try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+    if (data.kind !== 'subgroup') return;
+    if (data.subgroupId === subgroup.id) return;
+
+    const space = getActiveSpace();
+    const targetParent = space.groups.find(g => g.id === parentGroup.id);
+    if (!targetParent) return;
+    targetParent.subgroups = targetParent.subgroups || [];
+    let toIdx = targetParent.subgroups.findIndex(s => s.id === subgroup.id);
+    if (toIdx === -1) return;
+    if (below) toIdx += 1;
+    moveSubgroup(data.parentGroupId, parentGroup.id, data.subgroupId, toIdx);
+  });
 
   const linksEl = document.createElement('div');
   linksEl.className = 'subgroup-links';
@@ -5106,6 +5193,28 @@ async function moveGroup(fromIdx, toIdx) {
   const [moved] = space.groups.splice(fromIdx, 1);
   const adjusted = fromIdx < toIdx ? toIdx - 1 : toIdx;
   space.groups.splice(adjusted, 0, moved);
+  await saveState();
+  render();
+}
+
+async function moveSubgroup(srcParentId, targetParentId, subgroupId, insertIndex) {
+  const space = getActiveSpace();
+  const srcParent = space.groups.find(g => g.id === srcParentId);
+  if (!srcParent || !srcParent.subgroups) return;
+  const fromIdx = srcParent.subgroups.findIndex(s => s.id === subgroupId);
+  if (fromIdx === -1) return;
+  const [moved] = srcParent.subgroups.splice(fromIdx, 1);
+
+  const targetParent = space.groups.find(g => g.id === targetParentId);
+  if (!targetParent) {
+    srcParent.subgroups.splice(fromIdx, 0, moved);
+    return;
+  }
+  targetParent.subgroups = targetParent.subgroups || [];
+  if (srcParentId === targetParentId && fromIdx < insertIndex) insertIndex--;
+  insertIndex = Math.max(0, Math.min(insertIndex, targetParent.subgroups.length));
+  targetParent.subgroups.splice(insertIndex, 0, moved);
+
   await saveState();
   render();
 }
