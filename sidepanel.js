@@ -1487,7 +1487,7 @@ function renderContent() {
       e.stopPropagation();
       showContextMenu(e, [
         { label: 'Open All', action: () => openAllInGroup(group) },
-        { label: 'Edit Group', action: () => showGroupModal(group) },
+        { label: 'Edit Group', action: () => showGroupModal(group, 'group') },
         { label: 'Delete Group', danger: true, action: () => deleteGroup(group.id) }
       ]);
     });
@@ -1598,7 +1598,7 @@ function renderContent() {
   const addGroupBtn = document.createElement('button');
   addGroupBtn.className = 'bottom-action-btn';
   addGroupBtn.textContent = '+ Add Group';
-  addGroupBtn.addEventListener('click', () => showGroupModal(null));
+  addGroupBtn.addEventListener('click', () => showGroupModal(null, 'group'));
   bottomActions.appendChild(addGroupBtn);
 
 
@@ -5072,16 +5072,19 @@ function showSpaceModal(existing) {
 // ── Group Modal ──
 
 /**
- * Shows the add/edit group modal (name only).
- * @param {object|null} existing - Group to edit, or null to create a new one.
+ * Shows the add/edit modal for a group or subgroup.
+ * @param {object|null} existing - The group/subgroup being edited, or null to create.
+ * @param {'group'|'subgroup'} mode - Which kind of container to operate on.
+ * @param {string} [parentGroupId] - Required when mode === 'subgroup'.
  */
-function showGroupModal(existing) {
+function showGroupModal(existing, mode, parentGroupId) {
   const isEdit = !!existing;
+  const label = mode === 'subgroup' ? 'Subgroup' : 'Group';
   showModal(`
-    <div class="modal-title">${isEdit ? 'Edit' : 'Add'} Group</div>
+    <div class="modal-title">${isEdit ? 'Edit' : 'Add'} ${label}</div>
     <div class="modal-field">
       <label>Name</label>
-      <input type="text" id="mGName" value="${isEdit ? escapeHtml(existing.name) : ''}" placeholder="Group name">
+      <input type="text" id="mGName" value="${isEdit ? escapeHtml(existing.name) : ''}" placeholder="${label} name">
     </div>
     <div class="modal-buttons">
       <button class="modal-btn" id="mCancel">Cancel</button>
@@ -5096,13 +5099,25 @@ function showGroupModal(existing) {
 
     if (isEdit) {
       existing.name = name;
+    } else if (mode === 'subgroup') {
+      const space = getActiveSpace();
+      const parent = space.groups.find(g => g.id === parentGroupId);
+      if (!parent) return;
+      parent.subgroups = parent.subgroups || [];
+      parent.subgroups.push({
+        id: generateId('sg'),
+        name,
+        collapsed: false,
+        links: []
+      });
     } else {
       const space = getActiveSpace();
       space.groups.push({
         id: generateId('g'),
         name,
         collapsed: false,
-        links: []
+        links: [],
+        subgroups: []
       });
     }
     await saveState();
