@@ -583,6 +583,11 @@ html, body {
   border-radius: var(--radius-sm);
 }
 
+.subgroup-links.drag-target {
+  background: rgba(10, 132, 255, 0.06);
+  border-radius: var(--radius-sm);
+}
+
 .rail-item.dragging {
   opacity: 0.4;
 }

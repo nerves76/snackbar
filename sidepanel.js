@@ -1516,6 +1516,9 @@ function renderContent() {
     linksEl.dataset.groupId = group.id;
 
     linksEl.addEventListener('dragover', (e) => {
+      // Only accept link drags; group/subgroup drags bubble to their handlers
+      const dragging = document.querySelector('.link-item.dragging');
+      if (!dragging) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       // Don't accept drops on collapsed groups
@@ -1540,9 +1543,10 @@ function renderContent() {
       if (target) {
         target.classList.add(above ? 'drag-over-above' : 'drag-over-below');
       }
-      // Highlight container when dragging from another group
-      const dragging = document.querySelector('.link-item.dragging');
-      if (dragging && dragging.dataset.groupId !== group.id) {
+      // Highlight container when dragging from another container
+      const draggingGroupId = dragging.dataset.groupId;
+      const draggingSubgroupId = dragging.dataset.subgroupId;
+      if (draggingGroupId !== group.id || draggingSubgroupId) {
         linksEl.classList.add('drag-target');
       }
     });
@@ -1566,6 +1570,7 @@ function renderContent() {
 
       let data;
       try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+      if (data.kind !== 'link') return;
 
       const linkItems = [...linksEl.querySelectorAll('.link-item:not(.dragging)')];
       let insertIndex = linkItems.length;
@@ -1573,20 +1578,22 @@ function renderContent() {
         const rect = linkItems[i].getBoundingClientRect();
         if (e.clientY < rect.top + rect.height / 2) { insertIndex = i; break; }
       }
-      // Account for the dragged item being absent from the filtered list
-      // Find actual index among all links in this group
-      if (data.groupId === group.id) {
-        // Recount using the non-dragging items' data-link-id to map back
+      // If dragging within the same container, remap the insert index to the underlying array
+      const sameContainer = data.groupId === group.id && !data.subgroupId;
+      if (sameContainer) {
         const nonDraggingIds = linkItems.map(li => li.dataset.linkId);
         const targetLinkId = nonDraggingIds[insertIndex];
-        if (targetLinkId) {
-          insertIndex = group.links.findIndex(l => l.id === targetLinkId);
-        } else {
-          insertIndex = group.links.length;
-        }
+        insertIndex = targetLinkId
+          ? group.links.findIndex(l => l.id === targetLinkId)
+          : group.links.length;
       }
 
-      moveLink(data.groupId, group.id, data.linkId, insertIndex);
+      moveLink(
+        { groupId: data.groupId, subgroupId: data.subgroupId },
+        { groupId: group.id },
+        data.linkId,
+        insertIndex
+      );
     });
 
     group.links.forEach(link => {
@@ -1758,6 +1765,80 @@ function createSubgroupElement(parentGroup, subgroup) {
   linksEl.className = 'subgroup-links';
   linksEl.dataset.groupId = parentGroup.id;
   linksEl.dataset.subgroupId = subgroup.id;
+
+  linksEl.addEventListener('dragover', (e) => {
+    const dragging = document.querySelector('.link-item.dragging');
+    if (!dragging) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (subgroup.collapsed) return;
+
+    linksEl.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
+      el.classList.remove('drag-over-above', 'drag-over-below');
+    });
+
+    const linkItems = [...linksEl.querySelectorAll('.link-item:not(.dragging)')];
+    let target = null;
+    let above = true;
+    for (const li of linkItems) {
+      const rect = li.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      if (e.clientY < mid) { target = li; above = true; break; }
+      target = li;
+      above = false;
+    }
+    if (target) target.classList.add(above ? 'drag-over-above' : 'drag-over-below');
+
+    const draggingGroupId = dragging.dataset.groupId;
+    const draggingSubgroupId = dragging.dataset.subgroupId;
+    if (draggingGroupId !== parentGroup.id || draggingSubgroupId !== subgroup.id) {
+      linksEl.classList.add('drag-target');
+    }
+  });
+
+  linksEl.addEventListener('dragleave', (e) => {
+    if (!linksEl.contains(e.relatedTarget)) {
+      linksEl.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
+        el.classList.remove('drag-over-above', 'drag-over-below');
+      });
+      linksEl.classList.remove('drag-target');
+    }
+  });
+
+  linksEl.addEventListener('drop', (e) => {
+    e.preventDefault();
+    linksEl.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
+      el.classList.remove('drag-over-above', 'drag-over-below');
+    });
+    linksEl.classList.remove('drag-target');
+    if (subgroup.collapsed) return;
+
+    let data;
+    try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+    if (data.kind !== 'link') return;
+
+    const linkItems = [...linksEl.querySelectorAll('.link-item:not(.dragging)')];
+    let insertIndex = linkItems.length;
+    for (let i = 0; i < linkItems.length; i++) {
+      const rect = linkItems[i].getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) { insertIndex = i; break; }
+    }
+    const sameContainer = data.groupId === parentGroup.id && data.subgroupId === subgroup.id;
+    if (sameContainer) {
+      const nonDraggingIds = linkItems.map(li => li.dataset.linkId);
+      const targetLinkId = nonDraggingIds[insertIndex];
+      insertIndex = targetLinkId
+        ? subgroup.links.findIndex(l => l.id === targetLinkId)
+        : subgroup.links.length;
+    }
+
+    moveLink(
+      { groupId: data.groupId, subgroupId: data.subgroupId },
+      { groupId: parentGroup.id, subgroupId: subgroup.id },
+      data.linkId,
+      insertIndex
+    );
+  });
 
   subgroup.links.forEach(link => {
     linksEl.appendChild(createLinkElement(link, parentGroup.id, subgroup.id));
@@ -4921,21 +5002,42 @@ async function deleteSubgroup(groupId, subgroupId) {
 // ── Drag & Drop ──
 
 /**
- * Moves a link between or within groups via drag-and-drop.
- * Handles index adjustment when reordering within the same group.
+ * Moves a link between/within groups or subgroups.
+ * @param {{groupId: string, subgroupId?: string}} src
+ * @param {{groupId: string, subgroupId?: string}} target
  */
-async function moveLink(srcGroupId, targetGroupId, linkId, insertIndex) {
+async function moveLink(src, target, linkId, insertIndex) {
   const space = getActiveSpace();
-  const srcGroup = space.groups.find(g => g.id === srcGroupId);
+
+  const srcGroup = space.groups.find(g => g.id === src.groupId);
   if (!srcGroup) return;
-  const linkIndex = srcGroup.links.findIndex(l => l.id === linkId);
+  const srcContainer = src.subgroupId
+    ? (srcGroup.subgroups || []).find(s => s.id === src.subgroupId)
+    : srcGroup;
+  if (!srcContainer) return;
+
+  const linkIndex = srcContainer.links.findIndex(l => l.id === linkId);
   if (linkIndex === -1) return;
-  const [link] = srcGroup.links.splice(linkIndex, 1);
-  const targetGroup = space.groups.find(g => g.id === targetGroupId);
-  if (!targetGroup) return;
-  // If moving within same group and source was before insert point, adjust index
-  if (srcGroupId === targetGroupId && linkIndex < insertIndex) insertIndex--;
-  targetGroup.links.splice(insertIndex, 0, link);
+  const [link] = srcContainer.links.splice(linkIndex, 1);
+
+  const targetGroup = space.groups.find(g => g.id === target.groupId);
+  if (!targetGroup) {
+    srcContainer.links.splice(linkIndex, 0, link);
+    return;
+  }
+  const targetContainer = target.subgroupId
+    ? (targetGroup.subgroups || []).find(s => s.id === target.subgroupId)
+    : targetGroup;
+  if (!targetContainer) {
+    srcContainer.links.splice(linkIndex, 0, link);
+    return;
+  }
+
+  // If moving within same container and source was before insert point, adjust index
+  const sameContainer = src.groupId === target.groupId && src.subgroupId === target.subgroupId;
+  if (sameContainer && linkIndex < insertIndex) insertIndex--;
+  targetContainer.links.splice(insertIndex, 0, link);
+
   await saveState();
   render();
 }
