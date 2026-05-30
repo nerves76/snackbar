@@ -1701,9 +1701,9 @@ function createLinkElement(link, groupId, subgroupId) {
     e.stopPropagation();
     showContextMenu(e, [
       { label: 'Copy URL', action: () => navigator.clipboard.writeText(normalizeUrl(link.url)) },
-      { label: 'Edit', action: () => showLinkModal(link, 'group', groupId) },
+      { label: 'Edit', action: () => showLinkModal(link, 'group', groupId, subgroupId) },
       { label: 'Link Notes', action: () => showNotesModal(link, 'group', groupId) },
-      { label: 'Delete', danger: true, action: () => deleteLink(groupId, link.id) }
+      { label: 'Delete', danger: true, action: () => deleteLink(groupId, link.id, subgroupId) }
     ]);
   });
   item.appendChild(overflow);
@@ -4942,14 +4942,17 @@ async function moveLink(srcGroupId, targetGroupId, linkId, insertIndex) {
 
 // ── Link Operations ──
 
-async function deleteLink(groupId, linkId) {
+async function deleteLink(groupId, linkId, subgroupId) {
   const space = getActiveSpace();
   const group = space.groups.find(g => g.id === groupId);
-  if (group) {
-    group.links = group.links.filter(l => l.id !== linkId);
-    await saveState();
-    render();
-  }
+  if (!group) return;
+  const container = subgroupId
+    ? (group.subgroups || []).find(s => s.id === subgroupId)
+    : group;
+  if (!container) return;
+  container.links = container.links.filter(l => l.id !== linkId);
+  await saveState();
+  render();
 }
 
 async function deleteFeatured(featId) {
