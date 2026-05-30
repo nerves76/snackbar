@@ -1673,6 +1673,13 @@ function renderContent() {
       if (!dragging) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
+      // Clear stale indicators if the cursor moved into the empty append-area
+      // (the per-sgEl dragover owns the indicator when the cursor is over a subgroup).
+      if (!e.target.closest('.subgroup')) {
+        document.querySelectorAll('.subgroup-drag-above, .subgroup-drag-below').forEach(el => {
+          el.classList.remove('subgroup-drag-above', 'subgroup-drag-below');
+        });
+      }
     });
 
     subgroupsEl.addEventListener('drop', (e) => {
