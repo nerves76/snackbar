@@ -976,7 +976,7 @@ async function openLink(url) {
   }
 }
 
-function openLink(link) {
+function openLinkInBackgroundTab(link) {
   const url = normalizeUrl(link.url);
   if (isCustomScheme(url)) {
     chrome.tabs.create({ url });
@@ -987,13 +987,13 @@ function openLink(link) {
 
 /** Opens every link in a group and its subgroups, each in a new background tab. */
 function openAllInGroup(group) {
-  group.links.forEach(openLink);
-  (group.subgroups || []).forEach(sub => sub.links.forEach(openLink));
+  group.links.forEach(openLinkInBackgroundTab);
+  (group.subgroups || []).forEach(sub => sub.links.forEach(openLinkInBackgroundTab));
 }
 
 /** Opens every link in a subgroup, each in a new background tab. */
 function openAllInSubgroup(subgroup) {
-  subgroup.links.forEach(openLink);
+  subgroup.links.forEach(openLinkInBackgroundTab);
 }
 
 // ── Rendering ──
