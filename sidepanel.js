@@ -100,6 +100,7 @@ const LUCIDE_ICONS = {
   "pen-tool": `<path d="M15.707 21.293a1 1 0 0 1-1.414 0l-1.586-1.586a1 1 0 0 1 0-1.414l5.586-5.586a1 1 0 0 1 1.414 0l1.586 1.586a1 1 0 0 1 0 1.414z" /> <path d="m18 13-1.375-6.874a1 1 0 0 0-.746-.776L3.235 2.028a1 1 0 0 0-1.207 1.207L5.35 15.879a1 1 0 0 0 .776.746L13 18" /> <path d="m2.3 2.3 7.286 7.286" /> <circle cx="11" cy="11" r="2" />`,
   "pen": `<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />`,
   "phone": `<path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384" />`,
+  "pin": `<path d="M12 17v5" /> <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />`,
   "pause": `<rect x="14" y="4" width="4" height="16" rx="1" /> <rect x="6" y="4" width="4" height="16" rx="1" />`,
   "play": `<polygon points="6 3 20 12 6 21 6 3" />`,
   "plus": `<path d="M5 12h14" /> <path d="M12 5v14" />`,
@@ -1359,9 +1360,23 @@ function renderContent() {
     const section = document.createElement('div');
     section.className = 'featured-section';
 
-    space.featured.forEach(feat => {
+    // Build the ordered list: pinned links from all workspaces first (deduped by id),
+    // then this workspace's non-pinned featured.
+    const pinnedAcrossSpaces = [];
+    const seenIds = new Set();
+    for (const sp of state.spaces) {
+      for (const f of (sp.featured || [])) {
+        if (f.pinned && !seenIds.has(f.id)) {
+          pinnedAcrossSpaces.push(f);
+          seenIds.add(f.id);
+        }
+      }
+    }
+    const localUnpinned = space.featured.filter(f => !f.pinned);
+
+    [...pinnedAcrossSpaces, ...localUnpinned].forEach(feat => {
       const badge = document.createElement('div');
-      badge.className = 'featured-badge';
+      badge.className = 'featured-badge' + (feat.pinned ? ' pinned' : '');
       badge.title = feat.title + '\n' + feat.url;
 
       const iconEl = createFaviconEl(feat.url, 20);
@@ -1373,10 +1388,17 @@ function renderContent() {
       label.textContent = feat.title.split(/\s+/)[0]; // show only first word for compactness
       badge.appendChild(label);
 
+      if (feat.pinned) {
+        const marker = createLucideIcon('pin', 10, 'currentColor');
+        marker.classList.add('pin-marker');
+        badge.appendChild(marker);
+      }
+
       badge.addEventListener('click', () => openLink(feat.url));
       badge.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         showContextMenu(e, [
+          { label: feat.pinned ? 'Unpin' : 'Pin', action: () => togglePinFeatured(feat.id) },
           { label: 'Copy URL', action: () => navigator.clipboard.writeText(normalizeUrl(feat.url)) },
           { label: 'Edit', action: () => showLinkModal(feat, 'featured') },
           { label: 'Link Notes', action: () => showNotesModal(feat, 'featured') },
@@ -5243,10 +5265,26 @@ async function deleteLink(groupId, linkId, subgroupId) {
 }
 
 async function deleteFeatured(featId) {
-  const space = getActiveSpace();
-  space.featured = space.featured.filter(f => f.id !== featId);
+  for (const sp of state.spaces) {
+    if (!sp.featured) continue;
+    const before = sp.featured.length;
+    sp.featured = sp.featured.filter(f => f.id !== featId);
+    if (sp.featured.length !== before) break;
+  }
   await saveState();
   render();
+}
+
+async function togglePinFeatured(featId) {
+  for (const sp of state.spaces) {
+    const f = (sp.featured || []).find(f => f.id === featId);
+    if (f) {
+      f.pinned = !f.pinned;
+      await saveState();
+      render();
+      return;
+    }
+  }
 }
 
 // ── Context Menu ──
