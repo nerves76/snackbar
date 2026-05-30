@@ -600,6 +600,18 @@ html, body {
   box-shadow: 0 2px 0 0 #0a84ff;
 }
 
+.group-header.dragging {
+  opacity: 0.4;
+}
+
+.group.group-drag-above {
+  box-shadow: 0 -2px 0 0 #0a84ff;
+}
+
+.group.group-drag-below {
+  box-shadow: 0 2px 0 0 #0a84ff;
+}
+
 /* ── Bottom Actions ── */
 /* Utility links at the bottom of the content area (settings, etc.) */
 .bottom-actions {

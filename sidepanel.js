@@ -1477,6 +1477,21 @@ function renderContent() {
     // Header
     const header = document.createElement('div');
     header.className = 'group-header';
+    header.draggable = true;
+    header.addEventListener('dragstart', (e) => {
+      e.stopPropagation();
+      e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'group', groupId: group.id }));
+      e.dataTransfer.effectAllowed = 'move';
+      header.classList.add('dragging');
+      groupEl.classList.add('dragging');
+    });
+    header.addEventListener('dragend', () => {
+      header.classList.remove('dragging');
+      groupEl.classList.remove('dragging');
+      document.querySelectorAll('.group-drag-above, .group-drag-below').forEach(el => {
+        el.classList.remove('group-drag-above', 'group-drag-below');
+      });
+    });
 
     const toggle = document.createElement('span');
     toggle.className = 'group-toggle';
@@ -1508,6 +1523,47 @@ function renderContent() {
     header.appendChild(actions);
 
     header.addEventListener('click', () => toggleGroup(group.id));
+
+    groupEl.addEventListener('dragover', (e) => {
+      const dragging = document.querySelector('.group.dragging');
+      if (!dragging) return;
+      if (dragging === groupEl) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      $content.querySelectorAll('.group-drag-above, .group-drag-below').forEach(el => {
+        el.classList.remove('group-drag-above', 'group-drag-below');
+      });
+      const rect = groupEl.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      groupEl.classList.add(e.clientY < mid ? 'group-drag-above' : 'group-drag-below');
+    });
+
+    groupEl.addEventListener('dragleave', (e) => {
+      if (!groupEl.contains(e.relatedTarget)) {
+        groupEl.classList.remove('group-drag-above', 'group-drag-below');
+      }
+    });
+
+    groupEl.addEventListener('drop', (e) => {
+      const above = groupEl.classList.contains('group-drag-above');
+      const below = groupEl.classList.contains('group-drag-below');
+      if (!above && !below) return;
+      e.preventDefault();
+      e.stopPropagation();
+      groupEl.classList.remove('group-drag-above', 'group-drag-below');
+
+      let data;
+      try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+      if (data.kind !== 'group' || data.groupId === group.id) return;
+
+      const space = getActiveSpace();
+      const fromIdx = space.groups.findIndex(g => g.id === data.groupId);
+      let toIdx = space.groups.findIndex(g => g.id === group.id);
+      if (fromIdx === -1 || toIdx === -1) return;
+      if (below) toIdx += 1;
+      moveGroup(fromIdx, toIdx);
+    });
+
     groupEl.appendChild(header);
 
     // Links
@@ -5038,6 +5094,18 @@ async function moveLink(src, target, linkId, insertIndex) {
   if (sameContainer && linkIndex < insertIndex) insertIndex--;
   targetContainer.links.splice(insertIndex, 0, link);
 
+  await saveState();
+  render();
+}
+
+async function moveGroup(fromIdx, toIdx) {
+  const space = getActiveSpace();
+  if (fromIdx < 0 || fromIdx >= space.groups.length) return;
+  if (toIdx < 0 || toIdx > space.groups.length) return;
+  if (fromIdx === toIdx || fromIdx === toIdx - 1) return;
+  const [moved] = space.groups.splice(fromIdx, 1);
+  const adjusted = fromIdx < toIdx ? toIdx - 1 : toIdx;
+  space.groups.splice(adjusted, 0, moved);
   await saveState();
   render();
 }
