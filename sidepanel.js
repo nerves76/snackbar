@@ -1652,11 +1652,25 @@ function renderContent() {
       linksEl.appendChild(createLinkElement(link, group.id));
     });
 
+    const addRow = document.createElement('div');
+    addRow.className = 'group-add-row';
+
     const addLinkBtn = document.createElement('button');
     addLinkBtn.className = 'group-add-link';
-    addLinkBtn.textContent = '+ Add Link';
+    addLinkBtn.textContent = '+ Link';
     addLinkBtn.addEventListener('click', (e) => { e.stopPropagation(); showLinkModal(null, 'group', group.id); });
-    linksEl.appendChild(addLinkBtn);
+    addRow.appendChild(addLinkBtn);
+
+    const addSubgroupBtn = document.createElement('button');
+    addSubgroupBtn.className = 'group-add-subgroup';
+    addSubgroupBtn.textContent = '+ Subgroup';
+    addSubgroupBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showGroupModal(null, 'subgroup', group.id);
+    });
+    addRow.appendChild(addSubgroupBtn);
+
+    linksEl.appendChild(addRow);
 
     groupEl.appendChild(linksEl);
 
@@ -1698,15 +1712,6 @@ function renderContent() {
     (group.subgroups || []).forEach(subgroup => {
       subgroupsEl.appendChild(createSubgroupElement(group, subgroup));
     });
-
-    const addSubgroupBtn = document.createElement('button');
-    addSubgroupBtn.className = 'group-add-subgroup';
-    addSubgroupBtn.textContent = '+ Add Subgroup';
-    addSubgroupBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      showGroupModal(null, 'subgroup', group.id);
-    });
-    subgroupsEl.appendChild(addSubgroupBtn);
 
     groupEl.appendChild(subgroupsEl);
     $content.appendChild(groupEl);
@@ -1992,7 +1997,7 @@ function createSubgroupElement(parentGroup, subgroup) {
 
   const addLinkBtn = document.createElement('button');
   addLinkBtn.className = 'group-add-link';
-  addLinkBtn.textContent = '+ Add Link';
+  addLinkBtn.textContent = '+ Link';
   addLinkBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     showLinkModal(null, 'group', parentGroup.id, subgroup.id);
