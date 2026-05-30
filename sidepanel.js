@@ -988,6 +988,18 @@ function openAllInGroup(group) {
   });
 }
 
+/** Opens every link in a subgroup, each in a new background tab. */
+function openAllInSubgroup(subgroup) {
+  subgroup.links.forEach(link => {
+    const url = normalizeUrl(link.url);
+    if (isCustomScheme(url)) {
+      chrome.tabs.create({ url });
+    } else {
+      chrome.tabs.create({ url, active: false });
+    }
+  });
+}
+
 // ── Rendering ──
 
 const $rail = document.getElementById('rail');
@@ -1588,6 +1600,25 @@ function renderContent() {
     linksEl.appendChild(addLinkBtn);
 
     groupEl.appendChild(linksEl);
+
+    // Subgroups section (rendered after direct links)
+    const subgroupsEl = document.createElement('div');
+    subgroupsEl.className = 'group-subgroups';
+    subgroupsEl.dataset.groupId = group.id;
+    (group.subgroups || []).forEach(subgroup => {
+      subgroupsEl.appendChild(createSubgroupElement(group, subgroup));
+    });
+
+    const addSubgroupBtn = document.createElement('button');
+    addSubgroupBtn.className = 'group-add-subgroup';
+    addSubgroupBtn.textContent = '+ Add Subgroup';
+    addSubgroupBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showGroupModal(null, 'subgroup', group.id);
+    });
+    subgroupsEl.appendChild(addSubgroupBtn);
+
+    groupEl.appendChild(subgroupsEl);
     $content.appendChild(groupEl);
   });
 
@@ -1606,16 +1637,17 @@ function renderContent() {
 }
 
 /** Creates a draggable link row element with favicon, title, URL, overflow menu, and click-to-open. */
-function createLinkElement(link, groupId) {
+function createLinkElement(link, groupId, subgroupId) {
   const item = document.createElement('div');
   item.className = 'link-item';
   item.draggable = true;
   item.dataset.linkId = link.id;
   item.dataset.groupId = groupId;
+  if (subgroupId) item.dataset.subgroupId = subgroupId;
 
-  // Drag data includes source groupId so drop handler knows if it's cross-group
+  // Drag data includes source path so drop handler knows where it came from
   item.addEventListener('dragstart', (e) => {
-    e.dataTransfer.setData('text/plain', JSON.stringify({ linkId: link.id, groupId }));
+    e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'link', linkId: link.id, groupId, subgroupId }));
     e.dataTransfer.effectAllowed = 'move';
     item.classList.add('dragging');
   });
@@ -1679,6 +1711,69 @@ function createLinkElement(link, groupId) {
   item.addEventListener('click', () => openLink(link.url));
 
   return item;
+}
+
+/** Creates the DOM for one subgroup: header (toggle, name, ⋮ menu) + links + add-link button. */
+function createSubgroupElement(parentGroup, subgroup) {
+  const sgEl = document.createElement('div');
+  sgEl.className = 'subgroup' + (subgroup.collapsed ? ' collapsed' : '');
+  sgEl.dataset.subgroupId = subgroup.id;
+  sgEl.dataset.parentGroupId = parentGroup.id;
+
+  const header = document.createElement('div');
+  header.className = 'subgroup-header';
+
+  const toggle = document.createElement('span');
+  toggle.className = 'group-toggle';
+  toggle.textContent = '▼';
+  header.appendChild(toggle);
+
+  const name = document.createElement('span');
+  name.className = 'group-name';
+  name.textContent = subgroup.name;
+  header.appendChild(name);
+
+  const actions = document.createElement('div');
+  actions.className = 'group-actions';
+
+  const menuBtn = document.createElement('button');
+  menuBtn.className = 'group-action-btn';
+  menuBtn.textContent = '⋮';
+  menuBtn.title = 'More';
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showContextMenu(e, [
+      { label: 'Open All', action: () => openAllInSubgroup(subgroup) },
+      { label: 'Edit Subgroup', action: () => showGroupModal(subgroup, 'subgroup', parentGroup.id) },
+      { label: 'Delete Subgroup', danger: true, action: () => deleteSubgroup(parentGroup.id, subgroup.id) }
+    ]);
+  });
+  actions.appendChild(menuBtn);
+  header.appendChild(actions);
+
+  header.addEventListener('click', () => toggleSubgroup(parentGroup.id, subgroup.id));
+  sgEl.appendChild(header);
+
+  const linksEl = document.createElement('div');
+  linksEl.className = 'subgroup-links';
+  linksEl.dataset.groupId = parentGroup.id;
+  linksEl.dataset.subgroupId = subgroup.id;
+
+  subgroup.links.forEach(link => {
+    linksEl.appendChild(createLinkElement(link, parentGroup.id, subgroup.id));
+  });
+
+  const addLinkBtn = document.createElement('button');
+  addLinkBtn.className = 'group-add-link';
+  addLinkBtn.textContent = '+ Add Link';
+  addLinkBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showLinkModal(null, 'group', parentGroup.id, subgroup.id);
+  });
+  linksEl.appendChild(addLinkBtn);
+
+  sgEl.appendChild(linksEl);
+  return sgEl;
 }
 
 // ── Settings View ──
@@ -4803,6 +4898,26 @@ async function deleteGroup(groupId) {
   render();
 }
 
+async function toggleSubgroup(groupId, subgroupId) {
+  const space = getActiveSpace();
+  const group = space.groups.find(g => g.id === groupId);
+  const subgroup = group && (group.subgroups || []).find(s => s.id === subgroupId);
+  if (subgroup) {
+    subgroup.collapsed = !subgroup.collapsed;
+    await saveState();
+    render();
+  }
+}
+
+async function deleteSubgroup(groupId, subgroupId) {
+  const space = getActiveSpace();
+  const group = space.groups.find(g => g.id === groupId);
+  if (!group || !group.subgroups) return;
+  group.subgroups = group.subgroups.filter(s => s.id !== subgroupId);
+  await saveState();
+  render();
+}
+
 // ── Drag & Drop ──
 
 /**
@@ -5139,7 +5254,7 @@ function showGroupModal(existing, mode, parentGroupId) {
  * @param {'featured'|'group'} type - Whether this is a featured badge or group link.
  * @param {string} [groupId] - Required when type is 'group'.
  */
-function showLinkModal(existing, type, groupId) {
+function showLinkModal(existing, type, groupId, subgroupId) {
   const isEdit = !!existing;
   const apps = getEnabledApps();
   const isApp = isEdit && isCustomScheme(existing.url);
@@ -5322,7 +5437,12 @@ function showLinkModal(existing, type, groupId) {
     } else {
       const group = space.groups.find(g => g.id === groupId);
       if (group) {
-        group.links.push({ id: generateId('l'), title, url: normalizeUrl(url) });
+        const container = subgroupId
+          ? (group.subgroups || []).find(s => s.id === subgroupId)
+          : group;
+        if (container) {
+          container.links.push({ id: generateId('l'), title, url: normalizeUrl(url) });
+        }
       }
     }
     await saveState();

@@ -408,6 +408,78 @@ html, body {
   color: var(--text);
 }
 
+/* ── Subgroups ── */
+.group-subgroups {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 16px;
+  margin-top: 4px;
+}
+
+.group.collapsed .group-subgroups {
+  display: none;
+}
+
+.subgroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.subgroup-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.subgroup-header:hover .group-actions {
+  opacity: 1;
+}
+
+.subgroup-header .group-name {
+  font-size: 11px;
+}
+
+.subgroup.collapsed .group-toggle {
+  transform: rotate(-90deg);
+}
+
+.subgroup-links {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 4px;
+}
+
+.subgroup.collapsed .subgroup-links {
+  display: none;
+}
+
+.group-add-subgroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  margin-top: 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.group-add-subgroup:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
 /* ── Links ── */
 /* Individual bookmark rows with favicon, title, and URL */
 .link-item {
