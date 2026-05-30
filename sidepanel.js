@@ -976,28 +976,24 @@ async function openLink(url) {
   }
 }
 
-/** Opens every link in a group, each in a new background tab. */
+function openLink(link) {
+  const url = normalizeUrl(link.url);
+  if (isCustomScheme(url)) {
+    chrome.tabs.create({ url });
+  } else {
+    chrome.tabs.create({ url, active: false });
+  }
+}
+
+/** Opens every link in a group and its subgroups, each in a new background tab. */
 function openAllInGroup(group) {
-  group.links.forEach(link => {
-    const url = normalizeUrl(link.url);
-    if (isCustomScheme(url)) {
-      chrome.tabs.create({ url });
-    } else {
-      chrome.tabs.create({ url, active: false });
-    }
-  });
+  group.links.forEach(openLink);
+  (group.subgroups || []).forEach(sub => sub.links.forEach(openLink));
 }
 
 /** Opens every link in a subgroup, each in a new background tab. */
 function openAllInSubgroup(subgroup) {
-  subgroup.links.forEach(link => {
-    const url = normalizeUrl(link.url);
-    if (isCustomScheme(url)) {
-      chrome.tabs.create({ url });
-    } else {
-      chrome.tabs.create({ url, active: false });
-    }
-  });
+  subgroup.links.forEach(openLink);
 }
 
 // ── Rendering ──
